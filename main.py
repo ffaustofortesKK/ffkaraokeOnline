@@ -8,81 +8,85 @@ URL_SOLICITACOES = f"{BASE_URL}/solicitacoes.json"
 URL_TOKENS = f"{BASE_URL}/tokens.json"
 SENHA_ADMIN = "1234"
 
+# --- LÓGICA DE LOGIN ---
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 
-# --- LÓGICA DO ADMIN ---
+# --- PAINEL DO ADMIN ---
 def painel_admin():
     st.header("⚙️ Painel do Operador")
-    if st.button("🔄 Atualizar Lista"): st.rerun()
+    if st.button("🔄 Atualizar lista do Firebase"): st.rerun()
     
+    # Busca dados em tempo real
     solics = requests.get(URL_SOLICITACOES).json()
+    
     if solics:
         st.write("### Pedidos Pendentes")
         for id_firebase, info in solics.items():
+            # Apenas mostra quem ainda não foi aprovado ou recusado
             if info.get('estado') == "Pendente":
-                usuario = info.get('usuario')
                 c1, c2, c3 = st.columns([2, 1, 1])
-                c1.write(f"👤 {usuario}")
+                c1.write(f"👤 {info.get('usuario')}")
                 
-                # Botões com chave única baseada no ID do Firebase
                 if c2.button("✅ Aprovar", key=f"apr_{id_firebase}"):
+                    # 1. Cria o token para o cliente logar
                     expira = (datetime.datetime.now() + datetime.timedelta(hours=3)).isoformat()
-                    requests.patch(f"{URL_TOKENS}/{usuario}.json", json={"expira": expira})
+                    requests.put(f"{URL_TOKENS}/{info.get('usuario')}.json", json={"expira": expira})
+                    # 2. Muda o status para Aprovado
                     requests.patch(f"{URL_SOLICITACOES}/{id_firebase}.json", json={"estado": "Aprovado"})
                     st.rerun()
                     
                 if c3.button("❌ Recusar", key=f"rec_{id_firebase}"):
                     requests.patch(f"{URL_SOLICITACOES}/{id_firebase}.json", json={"estado": "Recusado"})
                     st.rerun()
-    else: st.write("Nenhuma solicitação pendente.")
+    else:
+        st.info("Nenhum pedido pendente.")
     
-    if st.button("Sair do Painel"): st.session_state.autenticado = False; st.rerun()
+    if st.button("Sair"): st.session_state.autenticado = False; st.rerun()
 
 # --- LÓGICA DO CLIENTE ---
 def painel_cliente():
-    if not st.session_state.autenticado:
-        st.subheader("🔑 Acesso ao Karaoke")
-        nome = st.text_input("Seu Nome:")
-        senha = st.text_input("Senha (ou Código Admin):", type="password")
-        
-        col1, col2 = st.columns(2)
-        if col1.button("Entrar"):
-            # Login Admin
-            if nome == "ADMIN" and senha == SENHA_ADMIN:
-                st.session_state.nome = "ADMIN"
-                st.session_state.autenticado = True
-                st.rerun()
-            # Login Cliente
-            else:
-                token_data = requests.get(f"{URL_TOKENS}/{nome}.json").json()
-                if token_data and 'expira' in token_data:
-                    expira = datetime.datetime.fromisoformat(token_data.get('expira'))
-                    if datetime.datetime.now() < expira:
-                        st.session_state.nome = nome
-                        st.session_state.autenticado = True
-                        st.rerun()
-                    else: st.error("Acesso expirado!")
-                else: st.error("Utilizador não encontrado ou não aprovado.")
+    st.subheader("🔑 Acesso ao Karaoke")
+    nome = st.text_input("Seu Nome:")
+    senha = st.text_input("Código (se já aprovado):", type="password")
+    
+    col1, col2 = st.columns(2)
+    if col1.button("Entrar"):
+        # Login Admin
+        if nome == "ADMIN" and senha == SENHA_ADMIN:
+            st.session_state.nome = "ADMIN"
+            st.session_state.autenticado = True
+            st.rerun()
+        # Login Cliente
+        else:
+            token_data = requests.get(f"{URL_TOKENS}/{nome}.json").json()
+            if token_data and 'expira' in token_data:
+                expira = datetime.datetime.fromisoformat(token_data.get('expira'))
+                if datetime.datetime.now() < expira:
+                    st.session_state.nome = nome
+                    st.session_state.autenticado = True
+                    st.rerun()
+                else: st.error("Acesso expirado!")
+            else: st.error("Utilizador não encontrado. Aguarde aprovação.")
 
-        if col2.button("Solicitar Acesso"):
-            if nome:
-                requests.post(URL_SOLICITACOES, json={"usuario": nome, "estado": "Pendente"})
-                st.info("Pedido enviado! Aguarde aprovação.")
-            else: st.warning("Digite seu nome!")
-    else:
-        # Área de Karaoke
-        st.success(f"Bem-vindo, {st.session_state.nome}!")
-        token_data = requests.get(f"{URL_TOKENS}/{st.session_state.nome}.json").json()
+    if col2.button("Solicitar Acesso"):
+        if nome:
+            requests.post(URL_SOLICITACOES, json={"usuario": nome, "estado": "Pendente"})
+            st.success("Pedido enviado! Aguarde o Admin aprovar.")
+        else: st.warning("Digite seu nome!")
+
+# --- EXECUÇÃO ---
+if st.session_state.get('nome') == "ADMIN":
+    painel_admin()
+elif st.session_state.get('autenticado'):
+    st.success(f"Bem-vindo, {st.session_state.nome}!")
+    token_data = requests.get(f"{URL_TOKENS}/{st.session_state.nome}.json").json()
+    if token_data:
         expira = datetime.datetime.fromisoformat(token_data.get('expira'))
-        
         resta = expira - datetime.datetime.now()
         if resta.total_seconds() > 0:
             st.metric("⏱️ Tempo Restante", str(resta).split('.')[0])
         else:
-            st.error("Tempo esgotado!"); st.session_state.autenticado = False; st.rerun()
-        
-        if st.button("Sair"): st.session_state.autenticado = False; st.rerun()
-
-# --- EXECUÇÃO ---
-if st.session_state.get('nome') == "ADMIN": painel_admin()
-else: painel_cliente()
+            st.error("Tempo esgotado!"); st.session_state.autenticado = False
+    if st.button("Sair"): st.session_state.autenticado = False; st.rerun()
+else:
+    painel_cliente()
