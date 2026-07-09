@@ -3,7 +3,6 @@ import requests
 import datetime
 
 # --- CONFIGURAÇÕES ---
-# URL fornecida por si
 BASE_URL = "https://grupoffkaraoke-default-rtdb.firebaseio.com"
 URL_SOLICITACOES = f"{BASE_URL}/solicitacoes.json"
 URL_TOKENS = f"{BASE_URL}/tokens.json"
@@ -11,7 +10,7 @@ SENHA_ADMIN = "1234"
 
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 
-# --- PAINEL DO ADMIN ---
+# --- FUNÇÕES DE INTERFACE ---
 def painel_admin():
     st.header("⚙️ Painel do Operador")
     if st.button("🔄 Atualizar Lista"): st.rerun()
@@ -38,9 +37,8 @@ def painel_admin():
     else:
         st.info("Nenhuma solicitação pendente.")
     
-    if st.button("Sair do Painel"): st.session_state.autenticado = False; st.rerun()
+    if st.button("Sair"): st.session_state.autenticado = False; st.session_state.nome = None; st.rerun()
 
-# --- PAINEL DO CLIENTE ---
 def painel_cliente():
     st.subheader("🔑 Acesso ao Karaoke")
     nome = st.text_input("Seu Nome:")
@@ -69,19 +67,25 @@ def painel_cliente():
             st.success("Pedido enviado! Aguarde o Admin aprovar.")
         else: st.warning("Digite seu nome!")
 
-# --- EXECUÇÃO PRINCIPAL ---
-if st.session_state.get('nome') == "ADMIN":
-    painel_admin()
-elif st.session_state.get('autenticado'):
-    st.success(f"Bem-vindo, {st.session_state.nome}!")
-    token_data = requests.get(f"{URL_TOKENS}/{st.session_state.nome}.json").json()
-    if token_data and isinstance(token_data.get('expira'), str):
-        expira = datetime.datetime.fromisoformat(token_data.get('expira'))
-        resta = expira - datetime.datetime.now()
-        if resta.total_seconds() > 0:
-            st.metric("⏱️ Tempo Restante", str(resta).split('.')[0])
-        else:
-            st.error("Tempo esgotado!"); st.session_state.autenticado = False
-    if st.button("Sair"): st.session_state.autenticado = False; st.rerun()
+# --- FLUXO PRINCIPAL ---
+if st.sidebar.button("⚠️ Reset Total da Sessão"):
+    st.session_state.clear()
+    st.rerun()
+
+if st.session_state.get('autenticado'):
+    if st.session_state.get('nome') == "ADMIN":
+        painel_admin()
+    else:
+        st.success(f"Bem-vindo, {st.session_state.nome}!")
+        token_data = requests.get(f"{URL_TOKENS}/{st.session_state.nome}.json").json()
+        if token_data and isinstance(token_data.get('expira'), str):
+            expira = datetime.datetime.fromisoformat(token_data.get('expira'))
+            resta = expira - datetime.datetime.now()
+            if resta.total_seconds() > 0:
+                st.metric("⏱️ Tempo Restante", str(resta).split('.')[0])
+            else:
+                st.error("Tempo esgotado!")
+                st.session_state.autenticado = False
+        if st.button("Sair"): st.session_state.autenticado = False; st.rerun()
 else:
     painel_cliente()
