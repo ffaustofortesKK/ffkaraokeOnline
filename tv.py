@@ -5,12 +5,12 @@ import time
 # Configuração da página para modo tela cheia
 st.set_page_config(page_title="FF KARAOKE - TV", layout="wide")
 
-# Ocultar elementos padrão do Streamlit
+# Ocultar elementos padrão do Streamlit e melhorar o player de vídeo
 st.markdown("""<style>
     #MainMenu {visibility: hidden;} 
     footer {visibility: hidden;}
     .video-container { text-align: center; margin-top: 20px; }
-    video { width: 80%; border: 10px solid #FFD700; border-radius: 20px; }
+    video { width: 80%; border: 10px solid #FFD700; border-radius: 20px; background: black; }
 </style>""", unsafe_allow_html=True)
 
 params = st.query_params
@@ -29,21 +29,22 @@ while True:
         if response.status_code == 200:
             status = response.json()
             
-            # Verificamos se há ação e se existe uma URL de vídeo
             if isinstance(status, dict) and status.get("acao") == "contagem":
-                video_url = status.get('url_video', '') # O seu painel deve enviar esta chave
+                video_url = status.get('url_video', '')
                 
+                # O atributo 'muted' é OBRIGATÓRIO para autoplay funcionar na maioria das TVs
                 display.markdown(f"""
                     <div class='video-container'>
                         <h1 style='color: yellow;'>SOLTA A VOZ: {status.get('cantor', '').upper()}</h1>
-                        <video autoplay controls>
+                        <video autoplay muted playsinline controls>
                             <source src="{video_url}" type="video/mp4">
-                            Seu navegador não suporta vídeos.
+                            Seu navegador não suporta este formato de vídeo.
                         </video>
                     </div>
                 """, unsafe_allow_html=True)
                 
-                time.sleep(15) # Tempo do vídeo
+                # Aguarda 30 segundos (ou o tempo que desejar) antes de limpar
+                time.sleep(30) 
                 requests.put(URL_STATUS, json={"acao": "espera"})
                 
             else:
