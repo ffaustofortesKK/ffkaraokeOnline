@@ -30,17 +30,19 @@ while True:
             if isinstance(status, dict) and status.get("acao") == "contagem":
                 video_url = status.get('url_video', '')
                 
-                # ATENÇÃO: 'muted' é OBRIGATÓRIO para autoplay. 
-                # 'playsinline' é obrigatório para dispositivos móveis/TVs.
+                # ADICIONEI: key={video_url} no markdown. 
+                # Isso força o Streamlit a redesenhar o componente se o vídeo mudar.
                 display.markdown(f"""
-                    <div class='video-container'>
+                    <div class='video-container' key="{video_url}">
                         <h1 style='color: yellow;'>SOLTA A VOZ: {status.get('cantor', '').upper()}</h1>
                         <video id="v1" width="800" autoplay muted playsinline controls>
                             <source src="{video_url}" type="video/mp4">
                             Seu navegador não suporta vídeos.
                         </video>
                         <script>
-                            document.getElementById('v1').play();
+                            var vid = document.getElementById('v1');
+                            vid.load(); 
+                            vid.play();
                         </script>
                     </div>
                 """, unsafe_allow_html=True)
