@@ -5,7 +5,6 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="FF KARAOKE - TV", layout="wide")
 
-# CSS para esconder elementos do Streamlit
 st.markdown("""<style>
     #MainMenu {visibility: hidden; display: none;} 
     footer {visibility: hidden; display: none;}
@@ -16,11 +15,14 @@ params = st.query_params
 slug = params.get("prestador")
 
 if not slug:
-    st.error("ERRO: URL da TV inválida. Use ?prestador=seu-slug")
+    st.error("ERRO: URL da TV inválida.")
     st.stop()
 
 URL_STATUS = f"https://grupoffkaraoke-default-rtdb.firebaseio.com/status_{slug}.json"
 display = st.empty()
+
+# Variável para controlar o vídeo atual
+video_atual = ""
 
 while True:
     try:
@@ -29,36 +31,45 @@ while True:
             status = response.json()
             
             if isinstance(status, dict) and status.get("acao") == "contagem":
-                video_url = status.get('url_video', '')
+                nova_url = status.get('url_video', '')
                 
-                # Usamos st.components.v1.html para melhor controlo sobre o player
-                components.html(f"""
-                    <div style='text-align: center;'>
-                        <h1 style='color: yellow; font-family: sans-serif;'>SOLTA A VOZ: {status.get('cantor', '').upper()}</h1>
-                        <video id="v1" width="800" autoplay playsinline controls style="border: 10px solid #FFD700; border-radius: 20px; background: black;">
-                            <source src="{video_url}" type="video/mp4">
-                        </video>
-                    </div>
-                    <script>
-                        var vid = document.getElementById('v1');
-                        // Tenta dar autoplay
-                        vid.muted = true; // Inicia mudo para garantir que o autoplay funcione
-                        vid.play().then(() => {{
-                            // Após iniciar, tira o mute após 1 segundo
+                # Só desenha se for um vídeo novo ou se o vídeo ainda não estiver a tocar
+                if nova_url and (nova_url != video_atual):
+                    video_atual = nova_url
+                    
+                    components.html(f"""
+                        <div style='text-align: center;'>
+                            <h1 style='color: yellow; font-family: sans-serif;'>SOLTA A VOZ: {status.get('cantor', '').upper()}</h1>
+                            <video id="v1" width="800" autoplay playsinline style="border: 10px solid #FFD700; border-radius: 20px; background: black;">
+                                <source src="{nova_url}" type="video/mp4">
+                            </video>
+                        </div>
+                        <script>
+                            var vid = document.getElementById('v1');
+                            
+                            // Tenta dar play forçado
+                            vid.muted = true; 
+                            vid.play();
+                            
+                            // Tenta tirar o mute após 1 segundo
                             setTimeout(() => {{ vid.muted = false; }}, 1000);
-                        }}).catch(e => console.log("Autoplay bloqueado"));
-                        
-                        // Garante que o vídeo não para
-                        vid.addEventListener('ended', () => {{ vid.play(); }});
-                    </script>
-                """, height=700)
-                
-                time.sleep(30) 
-                requests.put(URL_STATUS, json={"acao": "espera"})
+                            
+                            // Quando o vídeo acabar, recarrega a página para limpar o ecrã
+                            vid.onended = function() {{
+                                window.location.reload();
+                            }};
+                            
+                            // Gatilho de segurança: qualquer clique na tela força o play
+                            document.body.onclick = function() {{ vid.play(); }};
+                        </script>
+                    """, height=700)
                 
             else:
+                # Se não há acção de contagem, limpa a variável e mostra o texto
+                video_atual = ""
                 display.markdown("<h1 style='text-align: center; color: #555; margin-top: 200px;'>AGUARDANDO NOVO CANTOR...</h1>", unsafe_allow_html=True)
-    except Exception as e:
+                
+    except Exception:
         display.warning("Aguardando conexão...")
         
     time.sleep(2)
