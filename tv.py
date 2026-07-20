@@ -33,9 +33,26 @@ comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
 # 1. EXIBIÇÃO DO VÍDEO SE HOUVER URL VÁLIDA E COMANDO PLAY
-if comando == "play" and url_video:
-    st.markdown(f'<div class="video-container"><video width="80%" autoplay playsinline controls src="{url_video}" style="border:10px solid gold; border-radius:20px;"></video></div>', unsafe_allow_html=True)
-    st.info("🎤 A música está a tocar...")
+if comando == "play":
+    if url_video: # Verifica se realmente existe um link vindo do Cloudinary
+        st.markdown(f'<div class="video-container"><video width="80%" autoplay playsinline controls src="{url_video}" style="border:10px solid gold; border-radius:20px;"></video></div>', unsafe_allow_html=True)
+        st.info("🎤 A música está a tocar...")
+        
+        # --- A ARMADILHA SILENCIOSA ---
+        # Fica a verificar o Firebase a cada 3 segundos em background.
+        # Não destrói a tela. Só dá rerun quando o DJ mudar o status!
+        while True:
+            time.sleep(3)
+            try:
+                check_status = requests.get(f"{URL_STATUS}?nocache={time.time()}", timeout=5).json() or {}
+                if check_status.get("comando") != "play":
+                    st.rerun() # Só recarrega quando a música parar ou mudar
+            except:
+                pass
+    else:
+        st.error("⚠️ A música foi iniciada, mas o vídeo não foi encontrado no servidor (URL vazia).")
+        time.sleep(4)
+        st.rerun()
 
 # 2. VEZ DO CANTOR (AGUARDANDO START)
 elif comando == "aguardando_play":
@@ -46,21 +63,21 @@ elif comando == "aguardando_play":
             <h3>Aguardando o cantor carregar no botão no telemóvel...</h3>
         </div>
     """, unsafe_allow_html=True)
+    time.sleep(2)
+    st.rerun()
 
-# 3. CABEÇALHO PADRÃO
+# 3. CABEÇALHO PADRÃO E FILA DE ESPERA
 else:
     st.markdown("<h1 style='text-align:center; color:white; margin-top: 20px;'>FF KARAOKE</h1>", unsafe_allow_html=True)
 
-# 4. LISTA DE PEDIDOS DO PRESTADOR
-if res_pedidos:
-    st.markdown("<div class='fila-container'>", unsafe_allow_html=True)
-    st.subheader("🎤 Fila de Espera:")
-    pedidos_lista = list(res_pedidos.items())
-    for i, (p_id, p) in enumerate(pedidos_lista, 1):
-        if not str(p.get('musica', '')).startswith("PEDIDO:"):
-            st.markdown(f"### {i}. <span class='cantor-style'>{p.get('cantor')}</span> - <span class='musica-style'>{p.get('musica')}</span>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# Delay para atualizar a tela automaticamente
-time.sleep(2)
-st.rerun()
+    if res_pedidos:
+        st.markdown("<div class='fila-container'>", unsafe_allow_html=True)
+        st.subheader("🎤 Fila de Espera:")
+        pedidos_lista = list(res_pedidos.items())
+        for i, (p_id, p) in enumerate(pedidos_lista, 1):
+            if not str(p.get('musica', '')).startswith("PEDIDO:"):
+                st.markdown(f"### {i}. <span class='cantor-style'>{p.get('cantor')}</span> - <span class='musica-style'>{p.get('musica')}</span>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    time.sleep(2)
+    st.rerun()
