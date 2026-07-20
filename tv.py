@@ -19,7 +19,7 @@ params = st.query_params
 slug = params.get("prestador", "geral")
 
 URL_STATUS = f"https://grupoffkaraoke-default-rtdb.firebaseio.com/status_{slug}.json"
-URL_PEDIDOS = "https://grupoffkaraoke-default-rtdb.firebaseio.com/pedidos.json"
+URL_PEDIDOS = f"https://grupoffkaraoke-default-rtdb.firebaseio.com/pedidos_{slug}.json"
 
 # Buscar dados
 try:
@@ -32,38 +32,33 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# 1. EXIBIÇÃO DO VÍDEO NA TV
+# 1. EXIBIÇÃO DO VÍDEO SE HOUVER URL VÁLIDA E COMANDO PLAY
 if comando == "play" and url_video:
-    st.markdown(f'''
-        <div class="video-container">
-            <h2 class="cantor-style" style="margin-bottom: 10px;">A CANTAR: {str(res_status.get("cantor", "")).upper()}</h2>
-            <h3 class="musica-style" style="margin-bottom: 20px;">{str(res_status.get("musica", "")).upper()}</h3>
-            <video width="75%" autoplay controls playsinline src="{url_video}" style="border:8px solid gold; border-radius:20px; box-shadow: 0px 0px 20px gold;"></video>
-        </div>
-    ''', unsafe_allow_html=True)
+    st.markdown(f'<div class="video-container"><video width="80%" autoplay playsinline controls src="{url_video}" style="border:10px solid gold; border-radius:20px;"></video></div>', unsafe_allow_html=True)
+    st.info("🎤 A música está a tocar...")
 
-# 2. VEZ DO CANTOR
+# 2. VEZ DO CANTOR (AGUARDANDO START)
 elif comando == "aguardando_play":
     st.markdown(f"""
-        <div style='text-align:center; padding:50px; color:white;'>
+        <div style='text-align:center; padding:30px; color:white;'>
             <h1>VEZ DE: <span class="cantor-style">{str(res_status.get('cantor', '')).upper()}</span></h1>
-            <h3 style="color: yellow;">{str(res_status.get('musica', '')).upper()}</h3>
+            <h3>Música: <span class="musica-style">{str(res_status.get('musica', '')).upper()}</span></h3>
             <h3>Aguardando o cantor carregar no botão no telemóvel...</h3>
         </div>
     """, unsafe_allow_html=True)
 
 # 3. CABEÇALHO PADRÃO
 else:
-    st.markdown("<h1 style='text-align:center; color:white; margin-top: 40px; font-family: Arial;'>FF KARAOKE</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color: #d4af37; font-size: 22px;'>Escolha a sua música no telemóvel e prepare a voz!</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center; color:white; margin-top: 20px;'>FF KARAOKE</h1>", unsafe_allow_html=True)
 
-# 4. LISTA DE PEDIDOS
+# 4. LISTA DE PEDIDOS DO PRESTADOR
 if res_pedidos:
     st.markdown("<div class='fila-container'>", unsafe_allow_html=True)
     st.subheader("🎤 Fila de Espera:")
     pedidos_lista = list(res_pedidos.items())
     for i, (p_id, p) in enumerate(pedidos_lista, 1):
-        st.markdown(f"### {i}. <span class='cantor-style'>{p.get('cantor')}</span> - <span class='musica-style'>{p.get('musica')}</span>", unsafe_allow_html=True)
+        if not str(p.get('musica', '')).startswith("PEDIDO:"):
+            st.markdown(f"### {i}. <span class='cantor-style'>{p.get('cantor')}</span> - <span class='musica-style'>{p.get('musica')}</span>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Delay para atualizar a tela automaticamente
