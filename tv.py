@@ -17,7 +17,7 @@ st.markdown("""
         .cantor-style { color: white; font-weight: bold; text-shadow: 2px 2px 4px #000; }
         .musica-style { color: yellow; font-weight: bold; text-shadow: 2px 2px 4px #000; }
         
-        /* VÍDEO DE KARAOKE EM TELA TOTAL (100vw x 100vh) */
+        /* VÍDEO DE KARAOKE EM TELA TOTAL (100% W / 100% H) */
         .video-container { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: black; display: flex; justify-content: center; align-items: center; z-index: 9999; 
@@ -26,7 +26,7 @@ st.markdown("""
             width: 100vw; height: 100vh; object-fit: contain; background: black; 
         }
         
-        /* MINI TELA DE VÍDEO CLIPE: EXATAMENTE 430x306px */
+        /* DIMENSÃO EXATA DO VÍDEO CLIPE: 430x306px */
         .video-clipe-box { 
             width: 430px; 
             height: 306px;
@@ -37,6 +37,7 @@ st.markdown("""
             overflow: hidden;
             position: relative;
         }
+
         .video-clipe-box video {
             position: absolute;
             top: 0;
@@ -47,6 +48,7 @@ st.markdown("""
             opacity: 0;
             transition: opacity 1s ease-in-out;
         }
+
         .video-clipe-box video.ativo {
             opacity: 1;
             z-index: 2;
@@ -73,8 +75,8 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# Função para ir buscar a lista completa de vídeos da pasta "video_clipes" para a transição cruzada
-def obter_lista_videos_clipes():
+# Função para listar todos os vídeos da pasta "video_clipes" para transição cruzada
+def obter_todos_videos_da_pasta():
     try:
         search_result = cloudinary.search.Search()\
             .expression('folder=video_clipes AND resource_type:video')\
@@ -83,9 +85,7 @@ def obter_lista_videos_clipes():
         
         lista = search_result.get('resources', [])
         if lista:
-            urls = [item['secure_url'] for item in lista]
-            random.shuffle(urls)
-            return urls
+            return [item['secure_url'] for item in lista]
     except Exception as e:
         print("Erro na busca avançada Cloudinary:", e)
     
@@ -93,15 +93,13 @@ def obter_lista_videos_clipes():
         fallback = cloudinary.api.resources(type="upload", resource_type="video", max_results=50)
         geral = fallback.get('resources', [])
         if geral:
-            urls = [item['secure_url'] for item in geral]
-            random.shuffle(urls)
-            return urls
+            return [item['secure_url'] for item in geral]
     except:
         pass
         
     return []
 
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA TOTAL (EFEITO PLAY)
+# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA TOTAL
 if comando == "play":
     if url_video:
         st.markdown(f"""
@@ -118,7 +116,7 @@ if comando == "play":
                     vid.play();
                 }});
 
-                // Assim que o karaoke terminar, avisa o Firebase para fechar e voltar à fila
+                // Assim que o karaoke termina, fecha o vídeo e limpa o status voltando à fila
                 vid.onended = function() {{
                     fetch('{URL_STATUS}', {{
                         method: 'PATCH',
@@ -145,7 +143,7 @@ if comando == "play":
         requests.patch(URL_STATUS, json={"comando": "fim"})
         st.rerun()
 
-# 2. CONTAGEM DECRESCENTE (3, 2, 1, 0) - Disparada APENAS quando o comando é 'aguardando_play'
+# 2. CONTAGEM DECRESCENTE (3, 2, 1, 0) - ACIONADA ANTES DE ABRIR O KARAOKE
 elif comando == "aguardando_play":
     st.markdown(f"""
         <div style='text-align:center; padding:80px; color:white;'>
@@ -165,7 +163,7 @@ elif comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E MINI TELA 430x306px À DIREITA COM VÍDEOS ALEATÓRIOS E TRANSIÇÃO DE 5s
+# 3. TELA PRINCIPAL: FILA DE ESPERA E VÍDEOS CLIPES ALEATÓRIOS COM TRANSIÇÃO DE 5 SEGUNDOS ANTES DO FIM
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -187,97 +185,85 @@ else:
     with cl2:
         st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
         
-        # Obtém a lista aleatória de clips
-        lista_urls = obter_lista_videos_clipes()
-        
-        if lista_urls:
-            # Constrói o elemento com dois motores de vídeo em loop cruzado para transição suave de 5 segundos antes do fim
-            urls_js = str(lista_urls).replace("'", '"')
+        # Obter lista de vídeos para aleatoriedade
+        lista_videos = obter_todos_videos_da_pasta()
+        if lista_videos:
+            # Embaralhar aleatoriamente para garantir a ordem randómica
+            random.shuffle(lista_videos)
+            videos_json = str(lista_videos).replace("'", '"')
+            
             st.markdown(f"""
-                <div class="video-clipe-box" id="box-player">
-                    <video id="vA" autoplay muted playsinline></video>
-                    <video id="vB" muted playsinline></video>
+                <div class="video-clipe-box" id="caixa-clipes">
+                    <!-- Dois elementos de vídeo internos para alternância cruzada sem cortes secos -->
+                    <video id="vc-player-1" muted playsinline></video>
+                    <video id="vc-player-2" muted playsinline></video>
                 </div>
+                
                 <script>
-                    const playlist = {urls_js};
-                    let currentIndex = 0;
+                    const listaUrls = {videos_json};
+                    let indiceAtual = 0;
                     
-                    const vA = document.getElementById('vA');
-                    const vB = document.getElementById('vB');
+                    const v1 = document.getElementById('vc-player-1');
+                    const v2 = document.getElementById('vc-player-2');
                     
-                    let activeV = vA;
-                    let nextV = vB;
+                    let ativoNoV1 = true;
                     
-                    function playVideo(vidElement, url, callbackWhenDone) {{
-                        vidElement.src = url;
-                        vidElement.load();
-                        vidElement.play().catch(e => console.log("Autoplay bloqueado:", e));
-                        
-                        vidElement.ontimeupdate = function() {{
-                            // Se faltarem 5 segundos para o fim e ainda não disparou a transição
-                            if (vidElement.duration && (vidElement.duration - vidElement.currentTime <= 5) && !vidElement.transitionTriggered) {{
-                                vidElement.transitionTriggered = true;
-                                if (callbackWhenDone) callbackWhenDone();
-                            }}
-                        }};
-                        
-                        vidElement.onended = function() {{
-                            // Segurança caso acabe sem passar pelos 5s
-                            if (!vidElement.transitionTriggered && callbackWhenDone) {{
-                                vidElement.transitionTriggered = true;
-                                callbackWhenDone();
-                            }}
-                        }};
+                    function obterProximoUrl() {{
+                        if (indiceAtual >= listaUrls.length) {{
+                            indiceAtual = 0;
+                            // Re-embaralha para continuar aleatório
+                            listaUrls.sort(() => Math.random() - 0.5);
+                        }}
+                        return listaUrls[indiceAtual++];
                     }}
                     
-                    function nextStep() {{
-                        currentIndex = (currentIndex + 1) % playlist.length;
-                        let nextUrl = playlist[currentIndex];
+                    function iniciarPlayerClipe() {{
+                        if (listaUrls.length === 0) return;
                         
-                        // Configura o próximo vídeo em background
-                        nextV.src = nextUrl;
-                        nextV.load();
-                        nextV.play().catch(e => {{}});
-                        nextV.pause();
-                        nextV.currentTime = 0;
-                        nextV.transitionTriggered = false;
+                        v1.src = obterProximoUrl();
+                        v1.play().catch(e => console.log("Autoplay bloqueado:", e));
+                        v1.classList.add('ativo');
                         
-                        // Inicia a reprodução do próximo e faz o crossfade trocando as classes
-                        nextV.play();
-                        nextV.classList.add('ativo');
-                        activeV.classList.remove('ativo');
+                        v2.src = obterProximoUrl();
                         
-                        // Troca os ponteiros
-                        let temp = activeV;
-                        activeV = nextV;
-                        nextV = temp;
+                        // Configurar o loop de transição cruzada 5 segundos antes do fim
+                        function configurarMonitor(videoAtivo, videoInativo) {{
+                            videoAtivo.ontimeupdate = function() {{
+                                if (videoAtivo.duration && !isNaN(videoAtivo.duration)) {{
+                                    // Faltam 5 segundos para acabar
+                                    if ((videoAtivo.duration - videoAtivo.currentTime) <= 5 && !videoInativo.dataset.carregado) {{
+                                        videoInativo.dataset.carregado = "true";
+                                        videoInativo.src = obterProximoUrl();
+                                        videoInativo.load();
+                                        videoInativo.play().catch(e => {{}});
+                                        
+                                        // Executa a transição visual cruzada
+                                        setTimeout(() => {{
+                                            videoInativo.classList.add('ativo');
+                                            videoAtivo.classList.remove('ativo');
+                                        }}, 500); // transição suave
+                                        
+                                        // Prepara para o próximo ciclo trocando os papéis
+                                        setTimeout(() => {{
+                                            videoAtivo.pause();
+                                            videoAtivo.currentTime = 0;
+                                            videoAtivo.dataset.carregado = "";
+                                            configurarMonitor(videoInativo, videoAtivo);
+                                        }}, 1200);
+                                    }}
+                                }}
+                            }};
+                        }}
                         
-                        // Prepara o próximo evento de transição para o novo vídeo ativo
-                        activeV.ontimeupdate = function() {{
-                            if (activeV.duration && (activeV.duration - activeV.currentTime <= 5) && !activeV.transitionTriggered) {{
-                                activeV.transitionTriggered = true;
-                                nextStep();
-                            }}
-                        }};
+                        configurarMonitor(v1, v2);
                     }}
                     
-                    // Inicialização do primeiro vídeo
-                    if (playlist.length > 0) {{
-                        activeV.src = playlist[0];
-                        activeV.classList.add('ativo');
-                        activeV.play().catch(e => {{}});
-                        activeV.ontimeupdate = function() {{
-                            if (activeV.duration && (activeV.duration - activeV.currentTime <= 5) && !activeV.transitionTriggered) {{
-                                activeV.transitionTriggered = true;
-                                nextStep();
-                            }}
-                        }};
-                    }}
+                    iniciarPlayerClipe();
                 </script>
             """, unsafe_allow_html=True)
         else:
             st.warning("Nenhum vídeo encontrado na pasta 'video_clipes'.")
 
-    # Atualiza a página a cada 5 segundos para verificar novos pedidos no Firebase sem interromper a mini tela
+    # Atualiza a página a cada 5 segundos para verificar novos pedidos na fila ou chamadas de palco
     time.sleep(5)
     st.rerun()
