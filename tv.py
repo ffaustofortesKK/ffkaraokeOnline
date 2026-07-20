@@ -16,12 +16,15 @@ st.markdown("""
         #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
         .cantor-style { color: white; font-weight: bold; text-shadow: 2px 2px 4px #000; }
         .musica-style { color: yellow; font-weight: bold; text-shadow: 2px 2px 4px #000; }
+        
+        /* KARAOKE EM TELA TOTAL (100vw x 100vh) */
         .video-container { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: black; display: flex; justify-content: center; align-items: center; z-index: 9999; 
         }
+        .video-container video { width: 100vw; height: 100vh; object-fit: contain; background: black; }
         
-        /* Caixa exata com 430x306px e borda amarela */
+        /* VÍDEO CLIPE NA DIMENSÃO EXATA 430x306px */
         .video-clipe-box { 
             width: 430px; 
             height: 306px;
@@ -30,15 +33,23 @@ st.markdown("""
             border-radius: 4px; 
             border: 2px solid #ffd700; 
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            position: relative;
         }
 
         .video-clipe-box video {
-            width: 100%;
-            height: 100%;
-            object-fit: fill; /* Garante que estica para preencher os 430x306px inteiros sem cortar metades */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 430px;
+            height: 306px;
+            object-fit: fill;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+
+        .video-clipe-box video.ativo {
+            opacity: 1;
+            z-index: 2;
         }
         
         .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
@@ -62,8 +73,8 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# Função para encontrar os vídeos da pasta "video_clipes"
-def obter_video_clipe_da_pasta():
+# Função para obter a lista completa de vídeos da pasta "video_clipes" para transição suave
+def obter_lista_videos_clipes():
     try:
         search_result = cloudinary.search.Search()\
             .expression('folder=video_clipes AND resource_type:video')\
@@ -72,7 +83,7 @@ def obter_video_clipe_da_pasta():
         
         lista = search_result.get('resources', [])
         if lista:
-            return random.choice(lista)['secure_url']
+            return [item['secure_url'] for item in lista]
     except Exception as e:
         print("Erro na busca avançada Cloudinary:", e)
     
@@ -80,13 +91,13 @@ def obter_video_clipe_da_pasta():
         fallback = cloudinary.api.resources(type="upload", resource_type="video", max_results=50)
         geral = fallback.get('resources', [])
         if geral:
-            return random.choice(geral)['secure_url']
+            return [item['secure_url'] for item in geral]
     except:
         pass
         
-    return None
+    return []
 
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA
+# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA TOTAL (com fecho automático e retorno à fila de espera)
 if comando == "play":
     if url_video:
         st.markdown(f"""
@@ -103,6 +114,7 @@ if comando == "play":
                     vid.play();
                 }});
 
+                // Assim que o karaoke termina, limpa o comando no Firebase e recarrega para voltar à fila de espera
                 vid.onended = function() {{
                     fetch('{URL_STATUS}', {{
                         method: 'PATCH',
@@ -129,7 +141,7 @@ if comando == "play":
         requests.patch(URL_STATUS, json={"comando": "fim"})
         st.rerun()
 
-# 2. CONTAGEM DECRESCENTE (3, 2, 1, 0) ANTES DE ABRIR O KARAOKE
+# 2. CONTAGEM DECRESCENTE (3, 2, 1, 0) - Só começa quando o cliente aciona/abre a música
 elif comando == "aguardando_play":
     st.markdown(f"""
         <div style='text-align:center; padding:80px; color:white;'>
@@ -149,7 +161,7 @@ elif comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE EM MINIATURA À DIREITA
+# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEOS CLIPES EM ROTAÇÃO ALEATÓRIA (430x306px)
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -171,28 +183,59 @@ else:
     with cl2:
         st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
         
-        url_clipe = obter_video_clipe_da_pasta()
-        if url_clipe:
-            # ID único e chave de controle para forçar o recarregamento limpo e evitar sobreposição de vídeos duplicados
-            video_id_unico = f"vid_{abs(hash(url_clipe))}"
+        lista_urls = obter_lista_videos_clipes()
+        if lista_urls:
+            random.shuffle(lista_urls)
+            url_inicial_1 = lista_urls[0]
+            url_inicial_2 = lista_urls[1 % len(lista_urls)]
+            
+            # Sistema de transição em JavaScript puro: troca de vídeo 5 segundos antes do fim de forma cruzada e aleatória
             st.markdown(f"""
                 <div class="video-clipe-box">
-                    <video id="{video_id_unico}" autoplay muted loop playsinline>
-                        <source src="{url_clipe}" type="video/mp4">
-                        Seu navegador não suporta vídeo.
-                    </video>
+                    <video id="clipe_a" src="{url_inicial_1}" autoplay muted playsinline class="ativo"></video>
+                    <video id="clipe_b" src="{url_inicial_2}" muted playsinline></video>
                 </div>
                 <script>
-                    // Força o reset de qualquer stream órfão para garantir que apenas um vídeo toque
-                    const vElement = document.getElementById('{video_id_unico}');
-                    if (vElement) {{
-                        vElement.currentTime = 0;
-                        vElement.play().catch(e => console.log("Autoplay bloqueado:", e));
+                    const playlist = {lista_urls};
+                    let indexAtual = 0;
+                    
+                    const vidA = document.getElementById('clipe_a');
+                    const vidB = document.getElementById('clipe_b');
+                    
+                    let ativoA = true;
+
+                    function configurarTroca(vidAtivo, vidProximo) {{
+                        vidAtivo.ontimeupdate = function() {{
+                            // Quando faltarem 5 segundos para terminar, dispara o próximo vídeo
+                            if (vidAtivo.duration && (vidAtivo.duration - vidAtivo.currentTime <= 5)) {{
+                                vidAtivo.ontimeupdate = null; // Executa apenas uma vez por ciclo
+                                
+                                // Escolhe o próximo vídeo aleatoriamente da lista
+                                indexAtual = (indexAtual + 1) % playlist.length;
+                                vidProximo.src = playlist[indexAtual];
+                                vidProximo.load();
+                                vidProximo.play().catch(e => console.log("Erro auto play próximo:", e));
+                                
+                                // Alterna as classes CSS para transição suave de fade
+                                vidProximo.classList.add('ativo');
+                                vidAtivo.classList.remove('ativo');
+                                
+                                // Prepara o ciclo invertido
+                                setTimeout(() => {{
+                                    vidAtivo.pause();
+                                    configurarTroca(vidProximo, vidAtivo);
+                                }}, 1000);
+                            }}
+                        }};
                     }}
+
+                    // Inicia o primeiro ciclo no vídeo A
+                    vidA.play().catch(e => console.log("Erro inicial:", e));
+                    configurarTroca(vidA, vidB);
                 </script>
             """, unsafe_allow_html=True)
         else:
-            st.warning("Nenhum vídeo encontrado.")
+            st.warning("Nenhum vídeo encontrado na pasta 'video_clipes'.")
 
     time.sleep(5)
     st.rerun()
