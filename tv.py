@@ -5,7 +5,7 @@ import cloudinary
 import cloudinary.api
 import random
 
-# Configuração Cloudinary para ir buscar os clipes
+# Configuração Cloudinary
 cloudinary.config(cloud_name="yhwgjh7g", api_key="347924379441394", api_secret="_gzZOnOmzIk6dlmferYm6ck8S08")
 
 st.set_page_config(page_title="FF KARAOKE - TV", layout="wide")
@@ -23,7 +23,8 @@ st.markdown("""
         video { width: 100vw; height: 100vh; object-fit: contain; background: black; }
         .layout-principal { display: flex; width: 100vw; height: 100vh; padding: 20px; box-sizing: border-box; gap: 20px; }
         .coluna-esquerda { flex: 1; background: rgba(0,0,0,0.85); padding: 30px; border-radius: 15px; border: 2px solid #333; overflow-y: auto; }
-        .coluna-direita { width: 450px; background: rgba(0,0,0,0.85); padding: 20px; border-radius: 15px; border: 2px solid #333; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        /* Coluna da direita mais compacta para a miniatura */
+        .coluna-direita { width: 320px; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 15px; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
         .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
@@ -45,15 +46,21 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# Função auxiliar otimizada para recolher aleatoriamente um vídeo clipe do Cloudinary
-def obter_video_clipe_aleatorio():
+# Função ajustada para ir buscar estritamente à pasta "video_clipes" usando a expressão de pasta correta
+def obter_video_clipe_da_pasta():
     try:
-        resources = cloudinary.api.resources(type="upload", resource_type="video", max_results=50)
-        lista = resources.get('resources', [])
+        # O Cloudinary filtra por expressão de pasta (asset folder / prefix)
+        result = cloudinary.api.resources(
+            type="upload", 
+            resource_type="video", 
+            prefix="video_clipes/", 
+            max_results=50
+        )
+        lista = result.get('resources', [])
         if lista:
             return random.choice(lista)['secure_url']
     except Exception as e:
-        print("Erro ao buscar no Cloudinary:", e)
+        print("Erro ao buscar na pasta do Cloudinary:", e)
     return None
 
 # 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA
@@ -111,19 +118,17 @@ elif comando == "aguardando_play":
         </div>
     """, unsafe_allow_html=True)
     
-    # Executa a contagem visual de 3 até 0
     placeholder_contagem = st.empty()
     for i in [3, 2, 1, 0]:
         placeholder_contagem.markdown(f'<div class="contador-box">{i}</div>', unsafe_allow_html=True)
         time.sleep(1)
     
-    # Assim que chega a 0, muda automaticamente o comando para "play" para arrancar o vídeo
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
 # 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE EM MINIATURA À DIREITA
 else:
-    cl1, cl2 = st.columns([1.3, 1])
+    cl1, cl2 = st.columns([1.4, 0.9])
 
     with cl1:
         st.markdown("<h1 style='color:gold; font-size: 2.5rem; margin-bottom: 20px;'>🎤 FILA DE ESPERA</h1>", unsafe_allow_html=True)
@@ -144,20 +149,21 @@ else:
         st.markdown("</div>", unsafe_allow_html=True)
 
     with cl2:
-        st.markdown("<h3 style='color:white; text-align:center; margin-bottom: 10px;'>📺 VÍDEO CLIPE EM DESTAQUE</h3>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color:white; text-align:center; margin-bottom: 5px; font-size: 1.1rem;'>📺 VÍDEO CLIPE</h4>", unsafe_allow_html=True)
         st.markdown("<div class='coluna-direita'>", unsafe_allow_html=True)
         
-        # Puxa um vídeo clipe do Cloudinary
-        url_clipe = obter_video_clipe_aleatorio()
+        # Puxa o vídeo estritamente da pasta "video_clipes"
+        url_clipe = obter_video_clipe_da_pasta()
         if url_clipe:
+            # Tamanho reduzido para miniatura (ex: 280px de largura)
             st.markdown(f"""
-                <video width="100%" height="320px" autoplay muted loop playsinline style="border-radius: 10px; border: 2px solid gold; object-fit: cover;">
+                <video width="100%" height="180px" autoplay muted loop playsinline style="border-radius: 8px; border: 2px solid gold; object-fit: cover;">
                     <source src="{url_clipe}" type="video/mp4">
                     Seu navegador não suporta vídeo.
                 </video>
             """, unsafe_allow_html=True)
         else:
-            st.warning("Nenhum vídeo encontrado no Cloudinary.")
+            st.warning("Nenhum vídeo encontrado na pasta 'video_clipes'.")
             
         st.markdown("</div>", unsafe_allow_html=True)
 
