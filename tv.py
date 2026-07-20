@@ -3,8 +3,9 @@ import requests
 import time
 import cloudinary
 import cloudinary.api
+import random
 
-# Configuração Cloudinary para ir buscar os clipes da pasta "video_clipes"
+# Configuração Cloudinary para ir buscar os clipes
 cloudinary.config(cloud_name="yhwgjh7g", api_key="347924379441394", api_secret="_gzZOnOmzIk6dlmferYm6ck8S08")
 
 st.set_page_config(page_title="FF KARAOKE - TV", layout="wide")
@@ -44,16 +45,15 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# Função auxiliar para recolher aleatoriamente um vídeo clipe da pasta exata "video_clipes"
+# Função auxiliar otimizada para recolher aleatoriamente um vídeo clipe do Cloudinary
 def obter_video_clipe_aleatorio():
     try:
-        resources = cloudinary.api.resources(type="upload", resource_type="video", prefix="video_clipes", max_results=50)
+        resources = cloudinary.api.resources(type="upload", resource_type="video", max_results=50)
         lista = resources.get('resources', [])
         if lista:
-            import random
             return random.choice(lista)['secure_url']
-    except:
-        pass
+    except Exception as e:
+        print("Erro ao buscar no Cloudinary:", e)
     return None
 
 # 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA
@@ -147,7 +147,7 @@ else:
         st.markdown("<h3 style='color:white; text-align:center; margin-bottom: 10px;'>📺 VÍDEO CLIPE EM DESTAQUE</h3>", unsafe_allow_html=True)
         st.markdown("<div class='coluna-direita'>", unsafe_allow_html=True)
         
-        # Puxa um vídeo clipe da pasta exata "video_clipes" do Cloudinary
+        # Puxa um vídeo clipe do Cloudinary
         url_clipe = obter_video_clipe_aleatorio()
         if url_clipe:
             st.markdown(f"""
@@ -157,7 +157,7 @@ else:
                 </video>
             """, unsafe_allow_html=True)
         else:
-            st.warning("Adicione vídeos na pasta 'video_clipes' no Cloudinary.")
+            st.warning("Nenhum vídeo encontrado no Cloudinary.")
             
         st.markdown("</div>", unsafe_allow_html=True)
 
