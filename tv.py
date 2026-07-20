@@ -1,8 +1,15 @@
 import streamlit as st
 import requests
 import time
+import re
+import unicodedata
+import cloudinary
+import cloudinary.api
 
 st.set_page_config(page_title="FF KARAOKE - TV", layout="wide")
+
+# Configuração Cloudinary atualizada com o seu ambiente correto
+cloudinary.config(cloud_name="c-779ad1178ec5bba6e37e6c8874b33a", api_key="347924379441394", api_secret="_gzZOnOmzIk6dlmferYm6ck8S08")
 
 st.markdown("""
     <style>
@@ -21,6 +28,25 @@ slug = params.get("prestador", "geral")
 URL_STATUS = f"https://grupoffkaraoke-default-rtdb.firebaseio.com/status_{slug}.json"
 URL_PEDIDOS = f"https://grupoffkaraoke-default-rtdb.firebaseio.com/pedidos_{slug}.json"
 
+def normalizar_nome(nome):
+    if not nome: return ""
+    nome = str(nome).replace(".mp4", "")
+    nome = re.sub(r'["\'()\[\]]', '', nome)
+    nome = unicodedata.normalize('NFKD', nome).encode('ASCII', 'ignore').decode('utf-8')
+    nome = re.sub(r'[^\w\s]', '', nome)
+    return "_".join(nome.split())
+
+def encontrar_link_real(nome_base):
+    if not nomebase_limpo := normalizar_nome(nome_base):
+        return None
+    try:
+        resources = cloudinary.api.resources(type="upload", resource_type="video", prefix=nomebase_limpo, max_results=1)
+        if resources['resources']:
+            return resources['resources'][0]['secure_url'] 
+    except: 
+        pass
+    return None
+
 # Buscar dados
 try:
     res_status = requests.get(f"{URL_STATUS}?nocache={time.time()}", timeout=5).json() or {}
@@ -31,26 +57,29 @@ except:
 
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
+nome_musica = res_status.get("musica")
 
-# 1. EXIBIÇÃO DO VÍDEO SE HOUVER URL VÁLIDA E COMANDO PLAY
+# 1. EXIBIÇÃO DO VÍDEO SE HOUVER COMANDO PLAY
 if comando == "play":
-    if url_video: # Verifica se realmente existe um link vindo do Cloudinary
+    # Se a url veio vazia do prestador, a TV tenta buscar diretamente no Cloudinary pelo nome da música!
+    if not url_video and nome_musica:
+        url_video = encontrar_link_real(nome_musica)
+
+    if url_video: 
         st.markdown(f'<div class="video-container"><video width="80%" autoplay playsinline controls src="{url_video}" style="border:10px solid gold; border-radius:20px;"></video></div>', unsafe_allow_html=True)
         st.info("🎤 A música está a tocar...")
         
         # --- A ARMADILHA SILENCIOSA ---
-        # Fica a verificar o Firebase a cada 3 segundos em background.
-        # Não destrói a tela. Só dá rerun quando o DJ mudar o status!
         while True:
             time.sleep(3)
             try:
                 check_status = requests.get(f"{URL_STATUS}?nocache={time.time()}", timeout=5).json() or {}
                 if check_status.get("comando") != "play":
-                    st.rerun() # Só recarrega quando a música parar ou mudar
+                    st.rerun() 
             except:
                 pass
     else:
-        st.error("⚠️ A música foi iniciada, mas o vídeo não foi encontrado no servidor (URL vazia).")
+        st.error(f"⚠️ A música '{nome_musica}' foi iniciada, mas o vídeo não foi encontrado na pasta do Cloudinary.")
         time.sleep(4)
         st.rerun()
 
