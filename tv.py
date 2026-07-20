@@ -4,7 +4,7 @@ import time
 import cloudinary
 import cloudinary.api
 
-# Configuração Cloudinary para ir buscar os clipes da nova pasta
+# Configuração Cloudinary para ir buscar os clipes da pasta "video_clipes"
 cloudinary.config(cloud_name="yhwgjh7g", api_key="347924379441394", api_secret="_gzZOnOmzIk6dlmferYm6ck8S08")
 
 st.set_page_config(page_title="FF KARAOKE - TV", layout="wide")
@@ -44,11 +44,10 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# Função auxiliar para recolher aleatoriamente um vídeo clipe da pasta criada no Cloudinary
+# Função auxiliar para recolher aleatoriamente um vídeo clipe da pasta exata "video_clipes"
 def obter_video_clipe_aleatorio():
     try:
-        # Altere "Video_Clipes" para o nome exato da pasta que criou no Cloudinary se necessário
-        resources = cloudinary.api.resources(type="upload", resource_type="video", prefix="Video_Clipes", max_results=50)
+        resources = cloudinary.api.resources(type="upload", resource_type="video", prefix="video_clipes", max_results=50)
         lista = resources.get('resources', [])
         if lista:
             import random
@@ -148,7 +147,7 @@ else:
         st.markdown("<h3 style='color:white; text-align:center; margin-bottom: 10px;'>📺 VÍDEO CLIPE EM DESTAQUE</h3>", unsafe_allow_html=True)
         st.markdown("<div class='coluna-direita'>", unsafe_allow_html=True)
         
-        # Puxa um vídeo clipe da pasta do Cloudinary para passar em miniatura
+        # Puxa um vídeo clipe da pasta exata "video_clipes" do Cloudinary
         url_clipe = obter_video_clipe_aleatorio()
         if url_clipe:
             st.markdown(f"""
@@ -158,7 +157,7 @@ else:
                 </video>
             """, unsafe_allow_html=True)
         else:
-            st.warning("Adicione vídeos na pasta 'Video_Clipes' no Cloudinary.")
+            st.warning("Adicione vídeos na pasta 'video_clipes' no Cloudinary.")
             
         st.markdown("</div>", unsafe_allow_html=True)
 
