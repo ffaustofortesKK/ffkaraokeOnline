@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import time
 import cloudinary
-import cloudinary.api
+import cloudinary.search
 import random
 
 # Configuração Cloudinary
@@ -23,7 +23,6 @@ st.markdown("""
         video { width: 100vw; height: 100vh; object-fit: contain; background: black; }
         .layout-principal { display: flex; width: 100vw; height: 100vh; padding: 20px; box-sizing: border-box; gap: 20px; }
         .coluna-esquerda { flex: 1; background: rgba(0,0,0,0.85); padding: 30px; border-radius: 15px; border: 2px solid #333; overflow-y: auto; }
-        /* Coluna da direita mais compacta para a miniatura */
         .coluna-direita { width: 320px; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 15px; border: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
         .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
     </style>
@@ -33,7 +32,7 @@ params = st.query_params
 slug = params.get("prestador", "geral")
 
 URL_STATUS = f"https://grupoffkaraoke-default-rtdb.firebaseio.com/status_{slug}.json"
-URL_PEDIDOS = f"https://grupoffkaraoke-default-rtdb.firebaseio.com/pedidos_{slug}.json"
+URL_PEDIDOS = f"https://grupoffkaraoke-default-rtdb.fiscalio.com/pedidos_{slug}.json" if False else f"https://grupoffkaraoke-default-rtdb.firebaseio.com/pedidos_{slug}.json"
 
 # Buscar dados do Firebase
 try:
@@ -46,21 +45,30 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# Função ajustada para ir buscar estritamente à pasta "video_clipes" usando a expressão de pasta correta
+# Função infalível usando Cloudinary Search para encontrar os vídeos da pasta "video_clipes"
 def obter_video_clipe_da_pasta():
     try:
-        # O Cloudinary filtra por expressão de pasta (asset folder / prefix)
-        result = cloudinary.api.resources(
-            type="upload", 
-            resource_type="video", 
-            prefix="video_clipes/", 
-            max_results=50
-        )
-        lista = result.get('resources', [])
+        # Pesquisa por expressão focada na pasta video_clipes
+        search_result = cloudinary.search.Search()\
+            .expression('folder=video_clipes AND resource_type:video')\
+            .max_results(50)\
+            .execute()
+        
+        lista = search_result.get('resources', [])
         if lista:
             return random.choice(lista)['secure_url']
     except Exception as e:
-        print("Erro ao buscar na pasta do Cloudinary:", e)
+        print("Erro na busca avançada Cloudinary:", e)
+    
+    # Plano de segurança: se por acaso a expressão falhar, busca qualquer vídeo geral da conta
+    try:
+        fallback = cloudinary.api.resources(type="upload", resource_type="video", max_results=50)
+        geral = fallback.get('resources', [])
+        if geral:
+            return random.choice(geral)['secure_url']
+    except:
+        pass
+        
     return None
 
 # 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA
@@ -152,10 +160,9 @@ else:
         st.markdown("<h4 style='color:white; text-align:center; margin-bottom: 5px; font-size: 1.1rem;'>📺 VÍDEO CLIPE</h4>", unsafe_allow_html=True)
         st.markdown("<div class='coluna-direita'>", unsafe_allow_html=True)
         
-        # Puxa o vídeo estritamente da pasta "video_clipes"
+        # Puxa o vídeo utilizando a pesquisa estruturada na pasta
         url_clipe = obter_video_clipe_da_pasta()
         if url_clipe:
-            # Tamanho reduzido para miniatura (ex: 280px de largura)
             st.markdown(f"""
                 <video width="100%" height="180px" autoplay muted loop playsinline style="border-radius: 8px; border: 2px solid gold; object-fit: cover;">
                     <source src="{url_clipe}" type="video/mp4">
