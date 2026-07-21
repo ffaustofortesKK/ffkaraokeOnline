@@ -22,7 +22,6 @@ st.markdown("""
             background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; 
         }
         
-        /* Barra de controlos customizada visível e na camada superior */
         .custom-controls {
             position: absolute;
             bottom: 25px;
@@ -63,7 +62,7 @@ st.markdown("""
             text-align: center;
         }
         
-        /* Caixa do mini vídeo com 430x306px e borda amarela */
+        /* Caixa do mini vídeo mantida exatamente com 430x306px e borda amarela */
         .video-clipe-box { 
             width: 430px; 
             height: 306px;
@@ -103,27 +102,25 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# Função para encontrar os vídeos da pasta "video_clipes"
-def obter_video_clipe_da_pasta():
+# Função para buscar todos os vídeos da pasta "video_clipes" para formar a Playlist
+@st.cache_data(ttl=30)
+def obter_playlist_clipes():
     try:
         search_result = cloudinary.search.Search()\
             .expression('folder=video_clipes AND resource_type:video')\
             .max_results(50)\
             .execute()
         lista = search_result.get('resources', [])
-        if lista:
-            return random.choice(lista)['secure_url']
+        # Retorna lista de tuplos (nome_amigavel, url)
+        playlist = []
+        for item in lista:
+            public_id = item.get('public_id', 'video')
+            nome = public_id.split('/')[-1]
+            playlist.append((nome, item['secure_url']))
+        return playlist
     except Exception as e:
-        print("Erro na busca avançada Cloudinary:", e)
-    
-    try:
-        fallback = cloudinary.api.resources(type="upload", resource_type="video", max_results=50)
-        geral = fallback.get('resources', [])
-        if geral:
-            return random.choice(geral)['secure_url']
-    except:
-        pass
-    return None
+        print("Erro ao buscar playlist no Cloudinary:", e)
+        return []
 
 # 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLES COMPLETOS
 if comando == "play":
@@ -152,12 +149,10 @@ if comando == "play":
                 const timeDisplay = document.getElementById('current-time');
                 const btnPlayPause = document.getElementById('btn-play-pause');
 
-                // Configuração inicial de som ligado
                 vid.muted = false;
                 vid.volume = 1.0;
                 
                 vid.play().catch(function(error) {
-                    console.log("Autoplay com som bloqueado, ativando modo mudo temporário...", error);
                     vid.muted = true;
                     vid.play().then(() => {
                         vid.muted = false;
@@ -251,7 +246,7 @@ elif comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE EM MINIATURA À DIREITA
+# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E PLAYLIST + VÍDEO CLIPE À DIREITA
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -271,9 +266,31 @@ else:
             st.info("A fila está vazia. Envie músicas pelo telemóvel!")
 
     with cl2:
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        st.markdown("<h1 style='color:gold; font-size: 1.8rem; margin-bottom: 5px;'>📺 VÍDEOS / PLAYLIST</h1>", unsafe_allow_html=True)
         
-        url_clipe = obter_video_clipe_da_pasta()
+        playlist = obter_playlist_clipes()
+        
+        if playlist:
+            # Criar seletor de playlist mantendo a estrutura visual intacta
+            nomes_videos = [p[0] for p in playlist]
+            
+            # Gestão de estado da música selecionada na playlist
+            if "clipe_selecionado_idx" not in st.session_state:
+                st.session_state.clipe_selecionado_idx = 0
+                
+            col_sel, col_btn = st.columns([3, 1])
+            with col_sel:
+                escolha_nome = st.selectbox("Escolher da Playlist:", nomes_videos, index=st.session_state.clipe_selecionado_idx, label_visibility="collapsed")
+            with col_btn:
+                if st.button("🎲 Aleatório"):
+                    st.session_state.clipe_selecionado_idx = random.randint(0, len(playlist) - 1)
+                    st.rerun()
+            
+            # Achar URL correspondente à escolha
+            url_clipe = next((p[1] for p in playlist if p[0] == escolha_nome), playlist[0][1])
+        else:
+            url_clipe = None
+
         if url_clipe:
             video_id_unico = f"vid_{abs(hash(url_clipe))}"
             st.markdown(r"""
@@ -292,7 +309,7 @@ else:
                 </script>
             """, unsafe_allow_html=True)
         else:
-            st.warning("Nenhum vídeo encontrado.")
+            st.warning("Nenhum vídeo encontrado na pasta 'video_clipes'.")
 
     time.sleep(5)
     st.rerun()
