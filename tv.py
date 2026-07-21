@@ -54,7 +54,7 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA QUANDO ESTÁ EM MODO PLAY REAL
+# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA (APENAS QUANDO O COMANDO É 'play' DE MÚSICA DA FILA)
 if comando == "play":
     if url_video:
         player_html = f"""
@@ -217,7 +217,7 @@ if comando == "play":
         requests.patch(URL_STATUS, json={"comando": "fim"})
         st.rerun()
 
-# 2. CONTAGEM DECRESCENTE (3, 2, 1, 0) ANTES DE ABRIR O KARAOKE
+# 2. CONTAGEM DECRESCENTE ANTES DE ABRIR O KARAOKE EM TELA CHEIA
 elif comando == "aguardando_play":
     st.markdown(f"""
         <div style='text-align:center; padding:80px; color:white;'>
@@ -237,7 +237,7 @@ elif comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE DE FUNDO NO CANTO
+# 3. TELA PRINCIPAL (FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE RESTRITO À CAIXINHA DA DIREITA)
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -262,10 +262,10 @@ else:
         url_clipe = res_status.get("url_video")
         nome_clipe_atual = res_status.get("musica")
 
+        # Só mostra o clipe se o cantor for "VÍDEO CLIPE" e o comando NÃO for play de karaoke
         if url_clipe and nome_clipe_atual and res_status.get("cantor") == "VÍDEO CLIPE":
             st.markdown(f"<p style='color: #00ff00; font-weight: bold; margin-bottom: 5px;'>▶️ Reproduzindo: {nome_clipe_atual}</p>", unsafe_allow_html=True)
             
-            # HTML encapsulado com object-fit: contain (mantém proporção correta dentro da moldura)
             mini_player_html = f"""
             <!DOCTYPE html>
             <html>
