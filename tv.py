@@ -113,13 +113,13 @@ if comando == "play":
                 const vid = document.getElementById('karaoke-video');
                 
                 function fecharKaraoke() {{
-                    // Envia requisição PATCH para limpar o comando no Firebase e retornar à fila de espera
+                    // Limpa o comando no Firebase definindo como string vazia ou 'fim' para retornar imediatamente à fila
                     fetch('{URL_STATUS}', {{
                         method: 'PATCH',
                         headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ comando: 'fim', url_video: '', musica: '', cantor: '' }})
+                        body: JSON.stringify({{ comando: '', url_video: '', musica: '', cantor: '' }})
                     }}).finally(() => {{
-                        // Força o reload imediato para voltar à tela principal da fila
+                        // Força o reload imediato para abrir a fila de espera na interface principal
                         window.location.reload();
                     }});
                 }}
@@ -129,7 +129,7 @@ if comando == "play":
                     vid.play();
                 }});
 
-                // Assim que o vídeo termina, fecha obrigatoriamente e abre a fila
+                // Assim que o vídeo termina, fecha obrigatoriamente e volta para a fila
                 vid.onended = function() {{
                     fecharKaraoke();
                 }};
@@ -137,7 +137,7 @@ if comando == "play":
                 // Fallback de segurança caso o evento onended falhe por algum motivo no browser
                 vid.ontimeupdate = function() {{
                     if (vid.duration && !isNaN(vid.duration)) {{
-                        if (vid.currentTime >= (vid.duration - 0.3)) {{
+                        if (vid.currentTime >= (vid.duration - 0.5)) {{
                             fecharKaraoke();
                         }}
                     }}
@@ -156,7 +156,7 @@ if comando == "play":
     else:
         st.error("⚠️ Comando 'play' recebido, mas o link do vídeo está vazio.")
         time.sleep(3)
-        requests.patch(URL_STATUS, json={"comando": "fim"})
+        requests.patch(URL_STATUS, json={"comando": ""})
         st.rerun()
 
 # 2. CONTAGEM DECRESCENTE (3, 2, 1, 0) - ACIONADA QUANDO O CLIENTE COMEÇA A MÚSICA (aguardando_play)
