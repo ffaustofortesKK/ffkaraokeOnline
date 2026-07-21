@@ -128,10 +128,10 @@ def obter_video_clipe_da_pasta():
 # 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLES CUSTOMIZADOS DE SOM, SEEKBAR E PRÓXIMA MÚSICA
 if comando == "play":
     if url_video:
-        st.markdown(f"""
+        st.markdown(r"""
             <div class="video-container" id="container-video">
                 <video id="karaoke-video" playsinline>
-                    <source src="{url_video}" type="video/mp4">
+                    <source src="""" + url_video + """" type="video/mp4">
                     O seu navegador não suporta reprodução de vídeo.
                 </video>
                 
@@ -152,14 +152,13 @@ if comando == "play":
                 const timeDisplay = document.getElementById('current-time');
                 const btnPlayPause = document.getElementById('btn-play-pause');
 
-                // Tenta iniciar a reprodução com som ativado por padrão
                 vid.muted = false;
-                vid.play().catch(function(error) {{
-                    console.log("Autoplay com som bloqueado pelo navegador, tentando com mudo automático...", error);
+                vid.play().catch(function(error) {
+                    console.log("Autoplay com som bloqueado, tentando com mudo automático...", error);
                     vid.muted = true;
                     vid.play();
                     volumeBar.value = 0;
-                }});
+                });
 
                 function formatarTempo(segundos) {
                     let m = Math.floor(segundos / 60);
@@ -198,13 +197,13 @@ if comando == "play":
                 }
 
                 function proximaMusicaForçada() {
-                    fetch('{URL_STATUS}', {{
+                    fetch('""" + URL_STATUS + """', {
                         method: 'PATCH',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ comando: 'fim', url_video: '', musica: '', cantor: '' }})
-                    }}).then(function() {{
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ comando: 'fim', url_video: '', musica: '', cantor: '' })
+                    }).then(function() {
                         window.location.reload();
-                    }});
+                    });
                 }
 
                 vid.onended = function() {
@@ -271,22 +270,20 @@ else:
         
         url_clipe = obter_video_clipe_da_pasta()
         if url_clipe:
-            # ID único e chave de controle para forçar o recarregamento limpo e evitar sobreposição de vídeos duplicados
             video_id_unico = f"vid_{abs(hash(url_clipe))}"
-            st.markdown(f"""
+            st.markdown(r"""
                 <div class="video-clipe-box">
-                    <video id="{video_id_unico}" autoplay muted loop playsinline>
-                        <source src="{url_clipe}" type="video/mp4">
+                    <video id="p-""" + video_id_unico + """" autoplay muted loop playsinline>
+                        <source src="""" + url_clipe + """" type="video/mp4">
                         Seu navegador não suporta vídeo.
                     </video>
                 </div>
                 <script>
-                    // Força o reset de qualquer stream órfão para garantir que apenas um vídeo toque
-                    const vElement = document.getElementById('{video_id_unico}');
-                    if (vElement) {{
+                    const vElement = document.getElementById('p-""" + video_id_unico + """');
+                    if (vElement) {
                         vElement.currentTime = 0;
-                        vElement.play().catch(function(e) {{ console.log("Autoplay bloqueado:", e); }});
-                    }}
+                        vElement.play().catch(function(e) { console.log("Autoplay bloqueado:", e); });
+                    }
                 </script>
             """, unsafe_allow_html=True)
         else:
