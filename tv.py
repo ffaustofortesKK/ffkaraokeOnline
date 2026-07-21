@@ -113,13 +113,13 @@ if comando == "play":
                 const vid = document.getElementById('karaoke-video');
                 
                 function fecharKaraoke() {{
-                    // Envia requisição síncrona/beacon ou fetch prioritário para limpar o Firebase
+                    // Envia requisição PATCH para limpar o comando no Firebase e retornar à fila de espera
                     fetch('{URL_STATUS}', {{
                         method: 'PATCH',
                         headers: {{ 'Content-Type': 'application/json' }},
                         body: JSON.stringify({{ comando: 'fim', url_video: '', musica: '', cantor: '' }})
                     }}).finally(() => {{
-                        // Força o reload imediato da página independentemente da resposta
+                        // Força o reload imediato para voltar à tela principal da fila
                         window.location.reload();
                     }});
                 }}
@@ -129,7 +129,7 @@ if comando == "play":
                     vid.play();
                 }});
 
-                // Assim que o vídeo termina, fecha obrigatoriamente
+                // Assim que o vídeo termina, fecha obrigatoriamente e abre a fila
                 vid.onended = function() {{
                     fecharKaraoke();
                 }};
@@ -137,7 +137,7 @@ if comando == "play":
                 // Fallback de segurança caso o evento onended falhe por algum motivo no browser
                 vid.ontimeupdate = function() {{
                     if (vid.duration && !isNaN(vid.duration)) {{
-                        if (vid.currentTime >= (vid.duration - 0.5)) {{
+                        if (vid.currentTime >= (vid.duration - 0.3)) {{
                             fecharKaraoke();
                         }}
                     }}
@@ -265,7 +265,7 @@ else:
                     }}
                     
                     if (!window.__clipeIniciado) {{
-                        window.__clipoIniciado = true;
+                        window.__clipeIniciado = true;
                         iniciarPlayerClipe();
                     }}
                     
