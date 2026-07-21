@@ -3,7 +3,6 @@ import requests
 import time
 import cloudinary
 import cloudinary.search
-import random
 
 # Configuração Cloudinary
 cloudinary.config(cloud_name="yhwgjh7g", api_key="347924379441394", api_secret="_gzZOnOmzIk6dlmferYm6ck8S08")
@@ -62,7 +61,6 @@ st.markdown("""
             text-align: center;
         }
         
-        /* Caixa única e limpa para o vídeo clipe de fundo */
         .video-clipe-box { 
             width: 100%; 
             max-width: 550px;
@@ -93,7 +91,6 @@ slug = params.get("prestador", "geral")
 URL_STATUS = f"https://grupoffkaraoke-default-rtdb.firebaseio.com/status_{slug}.json"
 URL_PEDIDOS = f"https://grupoffkaraoke-default-rtdb.firebaseio.com/pedidos_{slug}.json"
 
-# Buscar dados do Firebase
 try:
     res_status = requests.get(f"{URL_STATUS}?nocache={time.time()}", timeout=5).json() or {}
     res_pedidos = requests.get(f"{URL_PEDIDOS}?nocache={time.time()}", timeout=5).json() or {}
@@ -208,7 +205,7 @@ if comando == "play" and res_status.get("cantor") != "VÍDEO CLIPE":
         requests.patch(URL_STATUS, json={"comando": "fim"})
         st.rerun()
 
-# 2. CONTAGEM DECRESCENTE ANTES DO KARAOKE
+# 2. CONTAGEM DECRESCENTE
 elif comando == "aguardando_play":
     st.markdown(f"""
         <div style='text-align:center; padding:80px; color:white;'>
@@ -228,7 +225,7 @@ elif comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 3. TELA PRINCIPAL (Fila à esquerda, Vídeo Clipe único à direita)
+# 3. TELA PRINCIPAL
 else:
     cl1, cl2 = st.columns([1.3, 1.1])
 
