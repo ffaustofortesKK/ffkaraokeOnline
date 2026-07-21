@@ -26,33 +26,89 @@ st.markdown("""
             width: 100vw; height: 100vh; object-fit: contain; background: black; 
         }
         
-        .video-clipe-box { 
-            width: 430px; 
-            height: 306px;
-            background: black; 
-            padding: 0px; 
-            border-radius: 4px; 
-            border: 2px solid #ffd700; 
-            overflow: hidden;
-            position: relative;
-        }
-
-        .video-clipe-box video {
-            position: absolute;
+        /* Contratos e barra flutuante sobre o vídeo clipe */
+        .video-clipe-fullscreen {
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0;
-            transition: opacity 1s ease-in-out;
+            width: 100vw;
+            height: 100vh;
+            background: black;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
         }
 
-        .video-clipe-box video.ativo {
-            opacity: 1;
-            z-index: 2;
+        .video-clipe-fullscreen video {
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            background: black;
         }
-        
+
+        .controlo-flutuante {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            padding: 12px 25px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            z-index: 10000;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            opacity: 0.2;
+            transition: opacity 0.3s ease;
+        }
+
+        .video-clipe-fullscreen:hover .controlo-flutuante {
+            opacity: 1;
+        }
+
+        .btn-vid {
+            background: #222;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .btn-vid:hover {
+            background: #e50914;
+            border-color: #e50914;
+        }
+
+        .progresso-barra {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 300px;
+            height: 6px;
+            border-radius: 3px;
+            background: #555;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .progresso-barra::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ffff00;
+            cursor: pointer;
+        }
+
         .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
@@ -160,140 +216,98 @@ elif comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 3. TELA PRINCIPAL: FILA EM TEMPO REAL E VÍDEOS CLIPES
+# 3. TELA PRINCIPAL: VÍDEO CLIPE EM TELA CHEIA IMEDIATA COM CONTROLOS
 else:
-    cl1, cl2 = st.columns([1.4, 1.2])
-
-    with cl1:
-        st.markdown("<h1 style='color:gold; font-size: 2.2rem; margin-bottom: 15px;'>🎤 FILA DE ESPERA</h1>", unsafe_allow_html=True)
+    lista_videos = obter_todos_videos_da_pasta()
+    if lista_videos:
+        random.shuffle(lista_videos)
+        videos_json = json.dumps(lista_videos)
         
-        # Div onde a fila será atualizada dinamicamente via JS sem atrasos de recarregamento do Streamlit
-        st.markdown("""
-            <div id="lista-fila-container" style="color: white; font-size: 1.3rem;">
-                A carregar fila...
-            </div>
-            <script>
-                function atualizarFilaRealTime() {
-                    fetch('""" + URL_PEDIDOS + """?nocache=' + Date.now())
-                        .then(res => res.json())
-                        .then(data => {
-                            const container = document.getElementById('lista-fila-container');
-                            if (!data) {
-                                container.innerHTML = "<div style='color: #aaa;'>A fila está vazia. Envie músicas pelo telemóvel!</div>";
-                                return;
-                            }
-                            
-                            let html = "";
-                            let contador = 1;
-                            for (const [p_id, p] of Object.entries(data)) {
-                                if (p.musica && !p.musica.startsWith("PEDIDO:")) {
-                                    html += `<div style="margin: 10px 0;"><b>${contador}.</b> <span style="color:white; font-weight:bold;">${p.cantor.toUpperCase()}</span> ➔ <span style="color:yellow; font-weight:bold;">${p.musica.toUpperCase()}</span></div>`;
-                                    contador++;
-                                }
-                            }
-                            
-                            if (contador === 1) {
-                                container.innerHTML = "<div style='color: #aaa;'>Ainda sem cantores na fila.</div>";
-                            } else {
-                                container.innerHTML = html;
-                            }
-                        }).catch(err => {});
-                }
+        st.markdown(f"""
+            <div class="video-clipe-fullscreen">
+                <video id="clipe-principal" autoplay playsinline></video>
                 
-                atualizarFilaRealTime();
-                setInterval(atualizarFilaRealTime, 1500);
+                <div class="controlo-flutuante">
+                    <button class="btn-vid" id="btn-play-pause">⏸️ Pausa</button>
+                    <button class="btn-vid" id="btn-som">🔊 Som: ON</button>
+                    <input type="range" id="barra-progresso" class="progresso-barra" value="0" min="0" max="100" step="0.1">
+                </div>
+            </div>
+            
+            <script>
+                const listaUrls = {videos_json};
+                let indiceAtual = 0;
+                const v = document.getElementById('clipe-principal');
+                const btnPlayPause = document.getElementById('btn-play-pause');
+                const btnSom = document.getElementById('btn-som');
+                const barraProgresso = document.getElementById('barra-progresso');
+                
+                function carregarProximoClipe() {{
+                    if (indiceAtual >= listaUrls.length) {{
+                        indiceAtual = 0;
+                        listaUrls.sort(() => Math.random() - 0.5);
+                    }}
+                    v.src = listaUrls[indiceAtual++];
+                    v.load();
+                    v.play().catch(e => {{
+                        v.muted = true;
+                        v.play();
+                        btnSom.innerText = "🔇 Som: OFF";
+                    }});
+                }}
+                
+                carregarProximoClipe();
+                
+                v.onended = function() {{
+                    carregarProximoClipe();
+                }};
+                
+                // Botão Play / Pause
+                btnPlayPause.onclick = function() {{
+                    if (v.paused) {{
+                        v.play();
+                        btnPlayPause.innerText = "⏸️ Pausa";
+                    }} else {{
+                        v.pause();
+                        btnPlayPause.innerText = "▶️ Play";
+                    }}
+                }};
+                
+                // Botão Som Mudo / Com Som
+                btnSom.onclick = function() {{
+                    v.muted = !v.muted;
+                    btnSom.innerText = v.muted ? "🔇 Som: OFF" : "🔊 Som: ON";
+                }};
+                
+                // Atualizar Linha de Acompanhamento da Música
+                v.ontimeupdate = function() {{
+                    if (v.duration && !isNaN(v.duration)) {{
+                        const percentual = (v.currentTime / v.duration) * 100;
+                        barraProgresso.value = percentual;
+                    }}
+                }};
+                
+                // Permitir avançar/recuar clicando na barra de progresso
+                barraProgresso.oninput = function() {{
+                    if (v.duration && !isNaN(v.duration)) {{
+                        const novoTempo = (barraProgresso.value / 100) * v.duration;
+                        v.currentTime = novoTempo;
+                    }}
+                }};
+                
+                // Detetar imediatamente comando do microfone para abrir o palco de karaoke
+                setInterval(() => {{
+                    fetch('{URL_STATUS}?nocache=' + Date.now())
+                        .then(res => res.json())
+                        .then(data => {{
+                            if (data && data.comando && data.comando !== "") {{
+                                window.location.reload();
+                            }}
+                        }}).catch(err => {{}});
+                }}, 1000);
             </script>
         """, unsafe_allow_html=True)
-
-    with cl2:
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-        
-        lista_videos = obter_todos_videos_da_pasta()
-        if lista_videos:
-            random.shuffle(lista_videos)
-            videos_json = json.dumps(lista_videos)
-            
-            st.markdown(f"""
-                <div class="video-clipe-box" id="caixa-clipes">
-                    <video id="vc-player-1" muted playsinline></video>
-                    <video id="vc-player-2" muted playsinline></video>
-                </div>
-                
-                <script>
-                    const listaUrls = {videos_json};
-                    let indiceAtual = 0;
-                    
-                    const v1 = document.getElementById('vc-player-1');
-                    const v2 = document.getElementById('vc-player-2');
-                    
-                    function obterProximoUrl() {{
-                        if (indiceAtual >= listaUrls.length) {{
-                            indiceAtual = 0;
-                            listaUrls.sort(() => Math.random() - 0.5);
-                        }}
-                        return listaUrls[indiceAtual++];
-                    }}
-                    
-                    function iniciarPlayerClipe() {{
-                        if (!listaUrls || listaUrls.length === 0) return;
-                        
-                        v1.src = obterProximoUrl();
-                        v1.load();
-                        v1.play().then(() => {{
-                            v1.classList.add('ativo');
-                        }}).catch(e => {{
-                            v1.muted = true;
-                            v1.play();
-                            v1.classList.add('ativo');
-                        }});
-                        
-                        v2.src = obterProximoUrl();
-                        v2.load();
-                        
-                        function configurarMonitor(videoAtivo, videoInativo) {{
-                            videoAtivo.ontimeupdate = function() {{
-                                if (videoAtivo.duration && !isNaN(videoAtivo.duration)) {{
-                                    if ((videoAtivo.duration - videoAtivo.currentTime) <= 4 && !videoInativo.dataset.carregado) {{
-                                        videoInativo.dataset.carregado = "true";
-                                        videoInativo.src = obterProximoUrl();
-                                        videoInativo.load();
-                                        videoInativo.play().catch(e => {{}});
-                                        
-                                        setTimeout(() => {{
-                                            videoInativo.classList.add('ativo');
-                                            videoAtivo.classList.remove('ativo');
-                                        }}, 600);
-                                        
-                                        setTimeout(() => {{
-                                            videoAtivo.pause();
-                                            videoAtivo.currentTime = 0;
-                                            videoAtivo.dataset.carregado = "";
-                                            configurarMonitor(videoInativo, videoAtivo);
-                                        }}, 1400);
-                                    }}
-                                }}
-                            }};
-                        }}
-                        
-                        configurarMonitor(v1, v2);
-                    }}
-                    
-                    if (!window.__clipeIniciado) {{
-                        window.__clipeIniciado = true;
-                        setTimeout(iniciarPlayerClipe, 500);
-                    }}
-                    
-                    // Deteta imediatamente qualquer comando do microfone para abrir o palco de karaoke
-                    setInterval(() => {{
-                        fetch('{URL_STATUS}?nocache=' + Date.now())
-                            .then(res => res.json())
-                            .then(data => {{
-                                if (data && data.comando && data.comando !== "") {{
-                                    window.location.reload();
-                                }}
-                            }}).catch(err => {{}});
-                    }}, 1000);
-                </script>
-            """, unsafe_allow_html=True)
-        else:
-            st.warning("A carregar vídeos do Cloudinary ou pasta vazia...")
+    else:
+        st.warning("A carregar vídeos do Cloudinary ou pasta vazia...")
+        time.sleep(2)
+        st.rerun()
