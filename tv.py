@@ -100,32 +100,14 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# Função para buscar todos os vídeos da pasta "clipes" para formar a Playlist
-@st.cache_data(ttl=30)
-def obter_playlist_clipes():
-    try:
-        search_result = cloudinary.search.Search()\
-            .expression('folder=clipes AND resource_type:video')\
-            .max_results(50)\
-            .execute()
-        lista = search_result.get('resources', [])
-        playlist = []
-        for item in lista:
-            public_id = item.get('public_id', 'video')
-            nome = public_id.split('/')[-1]
-            playlist.append((nome, item['secure_url']))
-        return playlist
-    except Exception as e:
-        print("Erro ao buscar playlist no Cloudinary:", e)
-        return []
-
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLES COMPLETOS
+# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLOS
 if comando == "play":
     if url_video:
-        st.markdown(r"""
+        # Correção da injeção de string para evitar quebras no HTML/JS
+        html_code = f"""
             <div class="video-container" id="container-video">
                 <video id="karaoke-video" playsinline style="width: 100%; height: 100%; object-fit: contain;">
-                    <source src="""" + url_video + """" type="video/mp4">
+                    <source src="{url_video}" type="video/mp4">
                     O seu navegador não suporta reprodução de vídeo.
                 </video>
                 
@@ -157,57 +139,58 @@ if comando == "play":
                     });
                 });
 
-                function formatarTempo(segundos) {
+                function formatarTempo(segundos) {{
                     let m = Math.floor(segundos / 60);
                     let s = Math.floor(segundos % 60);
                     return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
-                }
+                }}
 
-                vid.ontimeupdate = function() {
-                    if (vid.duration) {
+                vid.ontimeupdate = function() {{
+                    if (vid.duration) {{
                         let progressoPercentual = (vid.currentTime / vid.duration) * 100;
                         seekBar.value = progressoPercentual;
                         timeDisplay.innerText = formatarTempo(vid.currentTime) + " / " + formatarTempo(vid.duration);
-                    }
-                };
+                    }}
+                }};
 
-                function togglePlayPause() {
-                    if (vid.paused) {
+                function togglePlayPause() {{
+                    if (vid.paused) {{
                         vid.play();
                         btnPlayPause.innerText = "⏸️ Pausa";
-                    } else {
+                    }} else {{
                         vid.pause();
                         btnPlayPause.innerText = "▶️ Play";
-                    }
-                }
+                    }}
+                }}
 
-                function mudarProgresso(valor) {
-                    if (vid.duration) {
+                function mudarProgresso(valor) {{
+                    if (vid.duration) {{
                         let tempoNovo = (valor * vid.duration) / 100;
                         vid.currentTime = tempoNovo;
-                    }
-                }
+                    }}
+                }}
 
-                function mudarVolume(valor) {
+                function mudarVolume(valor) {{
                     vid.volume = parseFloat(valor);
                     vid.muted = (vid.volume === 0);
-                }
+                }}
 
-                function proximaMusicaForçada() {
-                    fetch('""" + URL_STATUS + """', {
+                function proximaMusicaForçada() {{
+                    fetch('{URL_STATUS}', {{
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ comando: 'fim', url_video: '', musica: '', cantor: '' })
-                    }).then(function() {
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ comando: 'fim', url_video: '', musica: '', cantor: '' }})
+                    }}).then(function() {{
                         window.location.reload();
-                    });
-                }
+                    }});
+                }}
 
-                vid.onended = function() {
+                vid.onended = function() {{
                     proximaMusicaForçada();
-                };
+                }};
             </script>
-        """, unsafe_allow_html=True)
+        """
+        st.markdown(html_code, unsafe_allow_html=True)
 
         while True:
             time.sleep(3)
@@ -271,19 +254,19 @@ else:
         if url_clipe and nome_clipe_atual and res_status.get("cantor") == "VÍDEO CLIPE":
             st.markdown(f"<p style='color: #00ff00; font-weight: bold; margin-bottom: 5px;'>▶️ Reproduzindo: {nome_clipe_atual}</p>", unsafe_allow_html=True)
             video_id_unico = f"vid_{abs(hash(url_clipe))}"
-            st.markdown(r"""
+            st.markdown(f"""
                 <div class="video-clipe-box">
-                    <video id="p-""" + video_id_unico + """" autoplay muted loop playsinline>
-                        <source src="""" + url_clipe + """" type="video/mp4">
+                    <video id="p-{video_id_unico}" autoplay muted loop playsinline>
+                        <source src="{url_clipe}" type="video/mp4">
                         Seu navegador não suporta vídeo.
                     </video>
                 </div>
                 <script>
-                    const vElement = document.getElementById('p-""" + video_id_unico + """');
-                    if (vElement) {
+                    const vElement = document.getElementById('p-{video_id_unico}');
+                    if (vElement) {{
                         vElement.currentTime = 0;
-                        vElement.play().catch(function(e) { console.log("Autoplay bloqueado:", e); });
-                    }
+                        vElement.play().catch(function(e) {{ console.log("Autoplay bloqueado:", e); }});
+                    }}
                 </script>
             """, unsafe_allow_html=True)
         else:
