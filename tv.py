@@ -246,7 +246,7 @@ elif comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E PLAYLIST + VÍDEO CLIPE À DIREITA
+# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE DE FUNDO CONTROLADO PELO PRESTADOR À DIREITA
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -266,32 +266,14 @@ else:
             st.info("A fila está vazia. Envie músicas pelo telemóvel!")
 
     with cl2:
-        st.markdown("<h1 style='color:gold; font-size: 1.8rem; margin-bottom: 5px;'>📺 VÍDEOS / PLAYLIST</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='color:gold; font-size: 1.8rem; margin-bottom: 5px;'>📺 VÍDEO CLIPE (FUNDO)</h1>", unsafe_allow_html=True)
         
-        playlist = obter_playlist_clipes()
-        
-        if playlist:
-            # Criar seletor de playlist mantendo a estrutura visual intacta
-            nomes_videos = [p[0] for p in playlist]
-            
-            # Gestão de estado da música selecionada na playlist
-            if "clipe_selecionado_idx" not in st.session_state:
-                st.session_state.clipe_selecionado_idx = 0
-                
-            col_sel, col_btn = st.columns([3, 1])
-            with col_sel:
-                escolha_nome = st.selectbox("Escolher da Playlist:", nomes_videos, index=st.session_state.clipe_selecionado_idx, label_visibility="collapsed")
-            with col_btn:
-                if st.button("🎲 Aleatório"):
-                    st.session_state.clipe_selecionado_idx = random.randint(0, len(playlist) - 1)
-                    st.rerun()
-            
-            # Achar URL correspondente à escolha
-            url_clipe = next((p[1] for p in playlist if p[0] == escolha_nome), playlist[0][1])
-        else:
-            url_clipe = None
+        # O vídeo exibido na TV agora segue estritamente o que o prestador definiu e enviou via Firebase (url_video / musica)
+        url_clipe = res_status.get("url_video")
+        nome_clipe_atual = res_status.get("musica")
 
-        if url_clipe:
+        if url_clipe and nome_clipe_atual and res_status.get("cantor") == "VÍDEO CLIPE":
+            st.markdown(f"<p style='color: #00ff00; font-weight: bold; margin-bottom: 5px;'>▶️ Reproduzindo: {nome_clipe_atual}</p>", unsafe_allow_html=True)
             video_id_unico = f"vid_{abs(hash(url_clipe))}"
             st.markdown(r"""
                 <div class="video-clipe-box">
@@ -309,7 +291,12 @@ else:
                 </script>
             """, unsafe_allow_html=True)
         else:
-            st.warning("Nenhum vídeo encontrado na pasta 'video_clipes'.")
+            # Caso o prestador ainda não tenha escolhido um clipe pelo painel dele, exibe um aviso em espera
+            st.markdown("""
+                <div class="video-clipe-box" style="display: flex; align-items: center; justify-content: center; text-align: center; color: #888; padding: 20px;">
+                    <p style="margin: 0; font-size: 1rem;">Aguardando o prestador selecionar um vídeo clipe no painel de controle...</p>
+                </div>
+            """, unsafe_allow_html=True)
 
-    time.sleep(5)
+    time.sleep(3)
     st.rerun()
