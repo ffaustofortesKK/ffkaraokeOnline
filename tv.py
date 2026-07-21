@@ -3,6 +3,7 @@ import requests
 import time
 import cloudinary
 import cloudinary.search
+import streamlit.components.v1 as components
 
 # Configuração Cloudinary
 cloudinary.config(cloud_name="yhwgjh7g", api_key="347924379441394", api_secret="_gzZOnOmzIk6dlmferYm6ck8S08")
@@ -15,52 +16,6 @@ st.markdown("""
         #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
         .cantor-style { color: white; font-weight: bold; text-shadow: 2px 2px 4px #000; }
         .musica-style { color: yellow; font-weight: bold; text-shadow: 2px 2px 4px #000; }
-        
-        .video-container { 
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-            background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; 
-        }
-        
-        .custom-controls {
-            position: absolute;
-            bottom: 25px;
-            width: 90%;
-            background: rgba(0, 0, 0, 0.85);
-            border: 2px solid #ffd700;
-            padding: 12px 20px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            z-index: 2147483647;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.9);
-            pointer-events: auto;
-        }
-        .custom-controls button {
-            background: #ffd700;
-            border: none;
-            color: black;
-            font-weight: bold;
-            padding: 10px 18px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1.1rem;
-        }
-        .custom-controls button:hover {
-            background: #ffc700;
-        }
-        .custom-controls input[type=range] {
-            cursor: pointer;
-            accent-color: #ffd700;
-        }
-        .time-display {
-            color: white;
-            font-family: monospace;
-            font-size: 1.1rem;
-            min-width: 120px;
-            text-align: center;
-        }
-        
         .video-clipe-box { 
             width: 430px; 
             height: 306px;
@@ -78,7 +33,6 @@ st.markdown("""
             height: 100%;
             object-fit: fill; 
         }
-        
         .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
@@ -103,9 +57,64 @@ url_video = res_status.get("url_video")
 # 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLES COMPLETOS
 if comando == "play":
     if url_video:
-        html_code = f"""
+        player_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body, html {{
+                    margin: 0; padding: 0; width: 100vw; height: 100vh; background: black; overflow: hidden;
+                }}
+                .video-container {{ 
+                    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+                    background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; 
+                }}
+                video {{
+                    width: 100%; height: 100%; object-fit: contain;
+                }}
+                .custom-controls {{
+                    position: absolute;
+                    bottom: 25px;
+                    width: 90%;
+                    background: rgba(0, 0, 0, 0.85);
+                    border: 2px solid #ffd700;
+                    padding: 12px 20px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.9);
+                    box-sizing: border-box;
+                }}
+                .custom-controls button {{
+                    background: #ffd700;
+                    border: none;
+                    color: black;
+                    font-weight: bold;
+                    padding: 10px 18px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 1.1rem;
+                }}
+                .custom-controls button:hover {{
+                    background: #ffc700;
+                }}
+                .custom-controls input[type=range] {{
+                    cursor: pointer;
+                    accent-color: #ffd700;
+                }}
+                .time-display {{
+                    color: white;
+                    font-family: monospace;
+                    font-size: 1.1rem;
+                    min-width: 120px;
+                    text-align: center;
+                }}
+            </style>
+        </head>
+        <body>
             <div class="video-container" id="container-video">
-                <video id="karaoke-video" playsinline style="width: 100%; height: 100%; object-fit: contain;">
+                <video id="karaoke-video" playsinline>
                     <source src="{url_video}" type="video/mp4">
                     O seu navegador não suporta reprodução de vídeo.
                 </video>
@@ -180,7 +189,7 @@ if comando == "play":
                         headers: {{ 'Content-Type': 'application/json' }},
                         body: JSON.stringify({{ comando: 'fim', url_video: '', musica: '', cantor: '' }})
                     }}).then(function() {{
-                        window.location.reload();
+                        window.top.location.reload();
                     }});
                 }}
 
@@ -188,8 +197,10 @@ if comando == "play":
                     proximaMusicaForçada();
                 }};
             </script>
+        </body>
+        </html>
         """
-        st.markdown(html_code, unsafe_allow_html=True)
+        components.html(player_html, height=800, scrolling=False)
 
         while True:
             time.sleep(3)
