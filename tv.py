@@ -3,6 +3,7 @@ import requests
 import time
 import cloudinary
 import cloudinary.search
+import random
 
 # Configuração Cloudinary
 cloudinary.config(cloud_name="yhwgjh7g", api_key="347924379441394", api_secret="_gzZOnOmzIk6dlmferYm6ck8S08")
@@ -61,7 +62,7 @@ st.markdown("""
             text-align: center;
         }
         
-        /* Caixa única limpa para o vídeo clipe de fundo */
+        /* Caixa única e limpa para o vídeo clipe de fundo */
         .video-clipe-box { 
             width: 100%; 
             max-width: 550px;
