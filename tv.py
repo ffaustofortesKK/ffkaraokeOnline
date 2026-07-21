@@ -154,12 +154,12 @@ if comando == "play":
 
                 // Tenta iniciar a reprodução com som ativado por padrão
                 vid.muted = false;
-                vid.play().catch(error => {
+                vid.play().catch(function(error) {{
                     console.log("Autoplay com som bloqueado pelo navegador, tentando com mudo automático...", error);
                     vid.muted = true;
                     vid.play();
                     volumeBar.value = 0;
-                });
+                }});
 
                 function formatarTempo(segundos) {
                     let m = Math.floor(segundos / 60);
@@ -198,13 +198,13 @@ if comando == "play":
                 }
 
                 function proximaMusicaForçada() {
-                    fetch('{URL_STATUS}', {
+                    fetch('{URL_STATUS}', {{
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {{ 'Content-Type': 'application/json' }},
                         body: JSON.stringify({{ comando: 'fim', url_video: '', musica: '', cantor: '' }})
-                    }).then(() => {
+                    }}).then(function() {{
                         window.location.reload();
-                    });
+                    }});
                 }
 
                 vid.onended = function() {
@@ -285,7 +285,7 @@ else:
                     const vElement = document.getElementById('{video_id_unico}');
                     if (vElement) {{
                         vElement.currentTime = 0;
-                        vElement.play().catch(e => console.log("Autoplay bloqueado:", e));
+                        vElement.play().catch(function(e) {{ console.log("Autoplay bloqueado:", e); }});
                     }}
                 </script>
             """, unsafe_allow_html=True)
