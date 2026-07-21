@@ -102,28 +102,8 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# Função para buscar todos os vídeos da pasta "video_clipes" para formar a Playlist
-@st.cache_data(ttl=30)
-def obter_playlist_clipes():
-    try:
-        search_result = cloudinary.search.Search()\
-            .expression('folder=video_clipes AND resource_type:video')\
-            .max_results(50)\
-            .execute()
-        lista = search_result.get('resources', [])
-        # Retorna lista de tuplos (nome_amigavel, url)
-        playlist = []
-        for item in lista:
-            public_id = item.get('public_id', 'video')
-            nome = public_id.split('/')[-1]
-            playlist.append((nome, item['secure_url']))
-        return playlist
-    except Exception as e:
-        print("Erro ao buscar playlist no Cloudinary:", e)
-        return []
-
 # 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLES COMPLETOS
-if comando == "play":
+if comando == "play" and res_status.get("cantor") != "VÍDEO CLIPE":
     if url_video:
         st.markdown(r"""
             <div class="video-container" id="container-video">
@@ -268,7 +248,6 @@ else:
     with cl2:
         st.markdown("<h1 style='color:gold; font-size: 1.8rem; margin-bottom: 5px;'>📺 VÍDEO CLIPE (FUNDO)</h1>", unsafe_allow_html=True)
         
-        # O vídeo exibido na TV agora segue estritamente o que o prestador definiu e enviou via Firebase (url_video / musica)
         url_clipe = res_status.get("url_video")
         nome_clipe_atual = res_status.get("musica")
 
@@ -291,7 +270,6 @@ else:
                 </script>
             """, unsafe_allow_html=True)
         else:
-            # Caso o prestador ainda não tenha escolhido um clipe pelo painel dele, exibe um aviso em espera
             st.markdown("""
                 <div class="video-clipe-box" style="display: flex; align-items: center; justify-content: center; text-align: center; color: #888; padding: 20px;">
                     <p style="margin: 0; font-size: 1rem;">Aguardando o prestador selecionar um vídeo clipe no painel de controle...</p>
