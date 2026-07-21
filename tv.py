@@ -16,25 +16,26 @@ st.markdown("""
         #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
         .cantor-style { color: white; font-weight: bold; text-shadow: 2px 2px 4px #000; }
         .musica-style { color: yellow; font-weight: bold; text-shadow: 2px 2px 4px #000; }
+        
         .video-container { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; 
         }
         
-        /* Custom Controls Overlay para o vídeo em tela cheia - Garante visibilidade e eventos por cima do vídeo */
+        /* Barra de controlos customizada visível e na camada superior */
         .custom-controls {
             position: absolute;
-            bottom: 30px;
-            width: 85%;
+            bottom: 25px;
+            width: 90%;
             background: rgba(0, 0, 0, 0.85);
             border: 2px solid #ffd700;
-            padding: 15px 20px;
+            padding: 12px 20px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             gap: 15px;
             z-index: 2147483647;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.9);
             pointer-events: auto;
         }
         .custom-controls button {
@@ -46,7 +47,6 @@ st.markdown("""
             border-radius: 6px;
             cursor: pointer;
             font-size: 1.1rem;
-            pointer-events: auto;
         }
         .custom-controls button:hover {
             background: #ffc700;
@@ -54,7 +54,6 @@ st.markdown("""
         .custom-controls input[type=range] {
             cursor: pointer;
             accent-color: #ffd700;
-            pointer-events: auto;
         }
         .time-display {
             color: white;
@@ -64,7 +63,7 @@ st.markdown("""
             text-align: center;
         }
         
-        /* Caixa exata com 430x306px e borda amarela */
+        /* Caixa do mini vídeo com 430x306px e borda amarela */
         .video-clipe-box { 
             width: 430px; 
             height: 306px;
@@ -77,7 +76,6 @@ st.markdown("""
             justify-content: center;
             align-items: center;
         }
-
         .video-clipe-box video {
             width: 100%;
             height: 100%;
@@ -112,7 +110,6 @@ def obter_video_clipe_da_pasta():
             .expression('folder=video_clipes AND resource_type:video')\
             .max_results(50)\
             .execute()
-        
         lista = search_result.get('resources', [])
         if lista:
             return random.choice(lista)['secure_url']
@@ -126,10 +123,9 @@ def obter_video_clipe_da_pasta():
             return random.choice(geral)['secure_url']
     except:
         pass
-        
     return None
 
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLES CUSTOMIZADOS DE SOM, SEEKBAR E PRÓXIMA MÚSICA
+# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLES COMPLETOS
 if comando == "play":
     if url_video:
         st.markdown(r"""
@@ -156,12 +152,12 @@ if comando == "play":
                 const timeDisplay = document.getElementById('current-time');
                 const btnPlayPause = document.getElementById('btn-play-pause');
 
-                // Força o volume máximo e som ativado por padrão
+                // Configuração inicial de som ligado
                 vid.muted = false;
                 vid.volume = 1.0;
                 
                 vid.play().catch(function(error) {
-                    console.log("Autoplay com som bloqueado pelo navegador, tentando ativação forçada...", error);
+                    console.log("Autoplay com som bloqueado, ativando modo mudo temporário...", error);
                     vid.muted = true;
                     vid.play().then(() => {
                         vid.muted = false;
