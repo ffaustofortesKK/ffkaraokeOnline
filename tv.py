@@ -28,11 +28,6 @@ st.markdown("""
             justify-content: center;
             align-items: center;
         }
-        .video-clipe-box video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; 
-        }
         .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
@@ -53,9 +48,10 @@ except:
 
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
+cantor_atual = str(res_status.get("cantor", ""))
 
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA (APENAS QUANDO O COMANDO É 'play' DE MÚSICA DA FILA)
-if comando == "play":
+# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA (APENAS SE FOR MÚSICA DA FILA E NÃO VÍDEO CLIPE)
+if comando == "play" and cantor_atual != "VÍDEO CLIPE":
     if url_video:
         player_html = f"""
         <!DOCTYPE html>
@@ -207,7 +203,7 @@ if comando == "play":
             time.sleep(3)
             try:
                 check_status = requests.get(f"{URL_STATUS}?nocache={time.time()}", timeout=5).json() or {}
-                if check_status.get("comando") != "play":
+                if check_status.get("comando") != "play" or str(check_status.get("cantor")) == "VÍDEO CLIPE":
                     st.rerun()
             except:
                 pass
@@ -262,8 +258,8 @@ else:
         url_clipe = res_status.get("url_video")
         nome_clipe_atual = res_status.get("musica")
 
-        # Só mostra o clipe se o cantor for "VÍDEO CLIPE" e o comando NÃO for play de karaoke
-        if url_clipe and nome_clipe_atual and res_status.get("cantor") == "VÍDEO CLIPE":
+        # Exibe o mini player na caixinha da direita se houver clipe selecionado
+        if url_clipe and nome_clipe_atual and cantor_atual == "VÍDEO CLIPE":
             st.markdown(f"<p style='color: #00ff00; font-weight: bold; margin-bottom: 5px;'>▶️ Reproduzindo: {nome_clipe_atual}</p>", unsafe_allow_html=True)
             
             mini_player_html = f"""
