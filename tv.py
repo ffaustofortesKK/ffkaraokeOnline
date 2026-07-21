@@ -27,7 +27,7 @@ st.markdown("""
             width: 100vw; height: 100vh; object-fit: contain; background: black; 
         }
         
-        /* DIMENSÃO EXATA DO VÍDEO CLIPE: 430x306px */
+        /* DIMENSÃO EXATA DO VÍDEO CLIPE: 430x306px (Lado Direito) */
         .video-clipe-box { 
             width: 430px; 
             height: 306px;
@@ -79,30 +79,33 @@ url_video = res_status.get("url_video")
 def obter_todos_videos_da_pasta():
     urls = []
     try:
-        # Método direto por prefixo (o mais robusto para pastas no Cloudinary)
-        result = cloudinary.api.resources(
+        # Tenta listar os recursos especificando o prefixo da pasta video_clipes
+        resultado_pasta = cloudinary.api.resources(
             type="upload", 
             resource_type="video", 
             prefix="video_clipes/", 
             max_results=100
         )
-        resources = result.get('resources', [])
-        if resources:
-            urls = [item['secure_url'] for item in resources]
+        lista = resultado_pasta.get('resources', [])
+        if lista:
+            urls = [item['secure_url'] for item in lista]
     except Exception as e:
-        print("Erro ao buscar com prefixo 'video_clipes/':", e)
+        print("Erro ao buscar por prefixo video_clipes/:", e)
     
-    # Fallback caso a estrutura da pasta venha sem o prefixo exato na API
+    # Se por algum motivo o prefixo direto não retornar, faz o rastreio geral e filtra os que contêm a pasta ou traz todos
     if not urls:
         try:
             fallback = cloudinary.api.resources(type="upload", resource_type="video", max_results=100)
             geral = fallback.get('resources', [])
             for item in geral:
-                # Filtra manualmente caso contenha video_clipes no public_id
-                if "video_clipes" in item.get('public_id', ''):
+                public_id = item.get('public_id', '')
+                if 'video_clipes' in public_id:
                     urls.append(item['secure_url'])
+            # Se mesmo filtrando não encontrar nada, pega todos os vídeos disponíveis na conta para evitar tela preta
+            if not urls and geral:
+                urls = [item['secure_url'] for item in geral]
         except Exception as e:
-            print("Erro no fallback geral Cloudinary:", e)
+            print("Erro no fallback de vídeos:", e)
             
     return urls
 
@@ -186,7 +189,7 @@ elif comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 3. TELA PRINCIPAL: FILA DE ESPERA E VÍDEOS CLIPES ALEATÓRIOS CONTÍNUOS
+# 3. TELA PRINCIPAL: FILA DE ESPERA E VÍDEOS CLIPES NA DIREITA
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -276,7 +279,7 @@ else:
                         iniciarPlayerClipe();
                     }}
                     
-                    // Deteta imediatamente qualquer clique no botão do microfone (comando aguardando_play ou play) para atualizar a TV e fechar o clipe
+                    // Deteta imediatamente qualquer comando do microfone para abrir o palco de karaoke
                     setInterval(() => {{
                         fetch('{URL_STATUS}?nocache=' + Date.now())
                             .then(res => res.json())
