@@ -111,15 +111,19 @@ if comando == "play":
             </div>
             <script>
                 const vid = document.getElementById('karaoke-video');
+                let fechado = false;
                 
                 function fecharKaraoke() {{
-                    // Limpa o comando no Firebase definindo como string vazia ou 'fim' para retornar imediatamente à fila
+                    if (fechado) return;
+                    fechado = true;
+
+                    // Limpa imediatamente o Firebase para remover o estado de reprodução
                     fetch('{URL_STATUS}', {{
                         method: 'PATCH',
                         headers: {{ 'Content-Type': 'application/json' }},
                         body: JSON.stringify({{ comando: '', url_video: '', musica: '', cantor: '' }})
                     }}).finally(() => {{
-                        // Força o reload imediato para abrir a fila de espera na interface principal
+                        // Recarrega a página para voltar instantaneamente à Fila de Espera
                         window.location.reload();
                     }});
                 }}
@@ -129,15 +133,15 @@ if comando == "play":
                     vid.play();
                 }});
 
-                // Assim que o vídeo termina, fecha obrigatoriamente e volta para a fila
+                // Assim que o vídeo termina, fecha obrigatoriamente
                 vid.onended = function() {{
                     fecharKaraoke();
                 }};
 
-                // Fallback de segurança caso o evento onended falhe por algum motivo no browser
+                // Fallback de segurança caso o evento onended falhe no browser
                 vid.ontimeupdate = function() {{
                     if (vid.duration && !isNaN(vid.duration)) {{
-                        if (vid.currentTime >= (vid.duration - 0.5)) {{
+                        if (vid.currentTime >= (vid.duration - 0.4)) {{
                             fecharKaraoke();
                         }}
                     }}
@@ -273,7 +277,7 @@ else:
                         fetch('{URL_STATUS}?nocache=' + Date.now())
                             .then(res => res.json())
                             .then(data => {{
-                                if (data && data.comando && data.comando !== "fim" && data.comando !== "") {{
+                                if (data && data.comando && data.comando !== "") {{
                                     window.location.reload();
                                 }}
                             }}).catch(err => {{}});
