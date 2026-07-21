@@ -16,76 +16,51 @@ st.markdown("""
         #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
         .cantor-style { color: white; font-weight: bold; text-shadow: 2px 2px 4px #000; }
         .musica-style { color: yellow; font-weight: bold; text-shadow: 2px 2px 4px #000; }
-        
         .video-container { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; 
         }
         
-        .video-wrapper {
-            position: relative;
-            width: 100vw;
-            height: 85vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .video-container video { 
-            width: 100%; height: 100%; object-fit: contain; background: black; 
-        }
-
-        /* Painel de Controles Flutuante na Tela de Karaoke */
-        .controls-overlay {
+        /* Custom Controls Overlay para o vídeo em tela cheia */
+        .custom-controls {
             position: absolute;
             bottom: 20px;
             width: 80%;
-            background: rgba(0, 0, 0, 0.75);
-            padding: 15px 25px;
-            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-            border: 1px solid #ffd700;
-            z-index: 10000;
-        }
-
-        .controls-row {
-            display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 15px;
+            z-index: 10000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-
-        .custom-btn {
-            background-color: #ffd700;
-            color: black;
-            border: none;
-            padding: 10px 20px;
-            font-weight: bold;
-            font-size: 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .custom-btn:hover { background-color: #ffaa00; }
-
-        .progress-bar-container {
-            width: 100%;
-            background: #444;
-            height: 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            position: relative;
-        }
-
-        .progress-bar-fill {
+        .custom-controls button {
             background: #ffd700;
-            height: 100%;
-            width: 0%;
-            border-radius: 4px;
+            border: none;
+            color: black;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .custom-controls button:hover {
+            background: #ffc700;
+        }
+        .custom-controls input[type=range] {
+            cursor: pointer;
+            accent-color: #ffd700;
+        }
+        .time-display {
+            color: white;
+            font-family: monospace;
+            font-size: 1rem;
+            min-width: 100px;
+            text-align: center;
         }
         
-        /* Caixa exata com 430x306px e borda amarela para miniatura */
+        /* Caixa exata com 430x306px e borda amarela */
         .video-clipe-box { 
             width: 430px; 
             height: 306px;
@@ -150,89 +125,91 @@ def obter_video_clipe_da_pasta():
         
     return None
 
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLES DE ÁUDIO E AVANÇO
+# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA COM CONTROLES CUSTOMIZADOS DE SOM, SEEKBAR E PRÓXIMA MÚSICA
 if comando == "play":
     if url_video:
         st.markdown(f"""
             <div class="video-container" id="container-video">
-                <div class="video-wrapper">
-                    <video id="karaoke-video" playsinline>
-                        <source src="{url_video}" type="video/mp4">
-                        O seu navegador não suporta reprodução de vídeo.
-                    </video>
-                </div>
+                <video id="karaoke-video" playsinline>
+                    <source src="{url_video}" type="video/mp4">
+                    O seu navegador não suporta reprodução de vídeo.
+                </video>
                 
-                <!-- Painel de Controles Customizados (Som, Progresso e Avançar) -->
-                <div class="controls-overlay">
-                    <div class="progress-bar-container" id="progress-container">
-                        <div class="progress-bar-fill" id="progress-fill"></div>
-                    </div>
-                    <div class="controls-row">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <button class="custom-btn" onclick="ajustarVolume(-0.1)">🔊 - Baixar Som</button>
-                            <button class="custom-btn" onclick="ajustarVolume(0.1)">🔊 + Aumentar Som</button>
-                            <span id="volume-label" style="color: white; font-weight: bold; margin-left: 10px;">Volume: 100%</span>
-                        </div>
-                        <div>
-                            <button class="custom-btn" style="background-color: #ff4d4d; color: white;" onclick="avancarMusica()">⏭️ Avançar Música</button>
-                        </div>
-                    </div>
+                <div class="custom-controls" id="controls-bar">
+                    <button id="btn-play-pause" onclick="togglePlayPause()">⏸️ Pausa</button>
+                    <span id="current-time" class="time-display">00:00 / 00:00</span>
+                    <input type="range" id="seek-bar" value="0" min="0" max="100" step="0.1" style="flex-grow: 1;" oninput="mudarProgresso(this.value)">
+                    <span style="color: white; font-weight: bold;">🔊 Som</span>
+                    <input type="range" id="volume-bar" min="0" max="1" step="0.05" value="1" style="width: 100px;" oninput="mudarVolume(this.value)">
+                    <button onclick="proximaMusicaForçada()" style="background: #ff4444; color: white;">⏭️ Avançar</button>
                 </div>
             </div>
-
+            
             <script>
                 const vid = document.getElementById('karaoke-video');
-                const progressFill = document.getElementById('progress-fill');
-                const progressContainer = document.getElementById('progress-container');
-                const volumeLabel = document.getElementById('volume-label');
+                const seekBar = document.getElementById('seek-bar');
+                const volumeBar = document.getElementById('volume-bar');
+                const timeDisplay = document.getElementById('current-time');
+                const btnPlayPause = document.getElementById('btn-play-pause');
 
-                // Tenta iniciar com som ativado (com fallback se o browser bloquear)
+                // Tenta iniciar a reprodução com som ativado por padrão
                 vid.muted = false;
                 vid.play().catch(error => {
+                    console.log("Autoplay com som bloqueado pelo navegador, tentando com mudo automático...", error);
                     vid.muted = true;
                     vid.play();
+                    volumeBar.value = 0;
                 });
 
-                // Atualizar barra de progresso (linha de acompanhamento)
-                vid.ontimeupdate = function() {{
-                    if (vid.duration) {{
-                        const percentual = (vid.currentTime / vid.duration) * 100;
-                        progressFill.style.width = percentual + '%';
-                    }}
-                }};
+                function formatarTempo(segundos) {
+                    let m = Math.floor(segundos / 60);
+                    let s = Math.floor(segundos % 60);
+                    return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+                }
 
-                // Clicar na barra de progresso para avançar/retroceder no vídeo
-                progressContainer.onclick = function(e) {{
-                    const rect = progressContainer.getBoundingClientRect();
-                    const posClick = (e.clientX - rect.left) / rect.width;
-                    vid.currentTime = posClick * vid.duration;
-                }};
+                vid.ontimeupdate = function() {
+                    if (vid.duration) {
+                        let progressoPercentual = (vid.currentTime / vid.duration) * 100;
+                        seekBar.value = progressoPercentual;
+                        timeDisplay.innerText = formatarTempo(vid.currentTime) + " / " + formatarTempo(vid.duration);
+                    }
+                };
 
-                // Controles de Volume
-                window.ajustarVolume = function(delta) {{
-                    vid.muted = false;
-                    let novoVolume = vid.volume + delta;
-                    if (novoVolume > 1) novoVolume = 1;
-                    if (novoVolume < 0) novoVolume = 0;
-                    vid.volume = novoVolume;
-                    volumeLabel.innerText = "Volume: " + Math.round(vid.volume * 100) + "%";
-                }};
+                function togglePlayPause() {
+                    if (vid.paused) {
+                        vid.play();
+                        btnPlayPause.innerText = "⏸️ Pausa";
+                    } else {
+                        vid.pause();
+                        btnPlayPause.innerText = "▶️ Play";
+                    }
+                }
 
-                // Função para pular/avançar a música
-                window.avancarMusica = function() {{
-                    fetch('{URL_STATUS}', {{
+                function mudarProgresso(valor) {
+                    if (vid.duration) {
+                        let tempoNovo = (valor * vid.duration) / 100;
+                        vid.currentTime = tempoNovo;
+                    }
+                }
+
+                function mudarVolume(valor) {
+                    vid.volume = valor;
+                    vid.muted = (valor == 0);
+                }
+
+                function proximaMusicaForçada() {
+                    fetch('{URL_STATUS}', {
                         method: 'PATCH',
-                        headers: {{ 'Content-Type': 'application/json' }},
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({{ comando: 'fim', url_video: '', musica: '', cantor: '' }})
-                    }}).then(() => {{
+                    }).then(() => {
                         window.location.reload();
-                    }});
-                }};
+                    });
+                }
 
-                // Fim natural do vídeo
-                vid.onended = function() {{
-                    window.avancarMusica();
-                }};
+                vid.onended = function() {
+                    proximaMusicaForçada();
+                };
             </script>
         """, unsafe_allow_html=True)
 
@@ -294,6 +271,7 @@ else:
         
         url_clipe = obter_video_clipe_da_pasta()
         if url_clipe:
+            # ID único e chave de controle para forçar o recarregamento limpo e evitar sobreposição de vídeos duplicados
             video_id_unico = f"vid_{abs(hash(url_clipe))}"
             st.markdown(f"""
                 <div class="video-clipe-box">
@@ -303,6 +281,7 @@ else:
                     </video>
                 </div>
                 <script>
+                    // Força o reset de qualquer stream órfão para garantir que apenas um vídeo toque
                     const vElement = document.getElementById('{video_id_unico}');
                     if (vElement) {{
                         vElement.currentTime = 0;
