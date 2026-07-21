@@ -31,7 +31,7 @@ st.markdown("""
         .video-clipe-box video {
             width: 100%;
             height: 100%;
-            object-fit: contain; 
+            object-fit: fill; 
         }
         .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
     </style>
@@ -265,7 +265,7 @@ else:
         if url_clipe and nome_clipe_atual and res_status.get("cantor") == "VÍDEO CLIPE":
             st.markdown(f"<p style='color: #00ff00; font-weight: bold; margin-bottom: 5px;'>▶️ Reproduzindo: {nome_clipe_atual}</p>", unsafe_allow_html=True)
             
-            # HTML encapsulado com object-fit: contain (mantém proporção correta dentro da moldura)
+            # HTML encapsulado estritamente dentro das dimensões do retângulo do vídeo clipe (430x306) com os controlos reduzidos integrados
             mini_player_html = f"""
             <!DOCTYPE html>
             <html>
@@ -278,7 +278,7 @@ else:
                         position: relative; width: 430px; height: 306px; background: black; display: flex; justify-content: center; align-items: center;
                     }}
                     video {{
-                        width: 100%; height: 100%; object-fit: contain;
+                        width: 100%; height: 100%; object-fit: fill;
                     }}
                     .mini-controls {{
                         position: absolute;
