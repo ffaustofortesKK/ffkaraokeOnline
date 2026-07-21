@@ -54,171 +54,8 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA QUANDO ESTÁ EM MODO PLAY REAL
-if comando == "play":
-    if url_video:
-        player_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body, html {{
-                    margin: 0; padding: 0; width: 100vw; height: 100vh; background: black; overflow: hidden;
-                }}
-                .video-container {{ 
-                    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-                    background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999; 
-                }}
-                video {{
-                    width: 100%; height: 100%; object-fit: contain;
-                }}
-                .custom-controls {{
-                    position: absolute;
-                    bottom: 25px;
-                    width: 90%;
-                    background: rgba(0, 0, 0, 0.85);
-                    border: 2px solid #ffd700;
-                    padding: 12px 20px;
-                    border-radius: 12px;
-                    display: flex;
-                    align-items: center;
-                    gap: 15px;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.9);
-                    box-sizing: border-box;
-                    z-index: 2147483647;
-                }}
-                .custom-controls button {{
-                    background: #ffd700;
-                    border: none;
-                    color: black;
-                    font-weight: bold;
-                    padding: 10px 18px;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 1.1rem;
-                }}
-                .custom-controls button:hover {{
-                    background: #ffc700;
-                }}
-                .custom-controls input[type=range] {{
-                    cursor: pointer;
-                    accent-color: #ffd700;
-                }}
-                .time-display {{
-                    color: white;
-                    font-family: monospace;
-                    font-size: 1.1rem;
-                    min-width: 120px;
-                    text-align: center;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="video-container" id="container-video">
-                <video id="karaoke-video" playsinline>
-                    <source src="{url_video}" type="video/mp4">
-                    O seu navegador não suporta reprodução de vídeo.
-                </video>
-                
-                <div class="custom-controls" id="controls-bar">
-                    <button id="btn-play-pause" onclick="togglePlayPause()">⏸️ Pausa</button>
-                    <span id="current-time" class="time-display">00:00 / 00:00</span>
-                    <input type="range" id="seek-bar" value="0" min="0" max="100" step="0.1" style="flex-grow: 1;" oninput="mudarProgresso(this.value)">
-                    <span style="color: white; font-weight: bold;">🔊 Som</span>
-                    <input type="range" id="volume-bar" min="0" max="1" step="0.05" value="1" style="width: 120px;" oninput="mudarVolume(this.value)">
-                    <button onclick="proximaMusicaForçada()" style="background: #ff4444; color: white;">⏭️ Avançar</button>
-                </div>
-            </div>
-            
-            <script>
-                const vid = document.getElementById('karaoke-video');
-                const seekBar = document.getElementById('seek-bar');
-                const volumeBar = document.getElementById('volume-bar');
-                const timeDisplay = document.getElementById('current-time');
-                const btnPlayPause = document.getElementById('btn-play-pause');
-
-                vid.muted = false;
-                vid.volume = 1.0;
-                
-                vid.play().catch(function(error) {{
-                    vid.muted = true;
-                    vid.play().then(() => {{
-                        vid.muted = false;
-                        volumeBar.value = 1;
-                    }});
-                }});
-
-                function formatarTempo(segundos) {{
-                    let m = Math.floor(segundos / 60);
-                    let s = Math.floor(segundos % 60);
-                    return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
-                }}
-
-                vid.ontimeupdate = function() {{
-                    if (vid.duration) {{
-                        let progressoPercentual = (vid.currentTime / vid.duration) * 100;
-                        seekBar.value = progressoPercentual;
-                        timeDisplay.innerText = formatarTempo(vid.currentTime) + " / " + formatarTempo(vid.duration);
-                    }}
-                }};
-
-                function togglePlayPause() {{
-                    if (vid.paused) {{
-                        vid.play();
-                        btnPlayPause.innerText = "⏸️ Pausa";
-                    }} else {{
-                        vid.pause();
-                        btnPlayPause.innerText = "▶️ Play";
-                    }}
-                }}
-
-                function mudarProgresso(valor) {{
-                    if (vid.duration) {{
-                        let tempoNovo = (valor * vid.duration) / 100;
-                        vid.currentTime = tempoNovo;
-                    }}
-                }}
-
-                function mudarVolume(valor) {{
-                    vid.volume = parseFloat(valor);
-                    vid.muted = (vid.volume === 0);
-                }}
-
-                function proximaMusicaForçada() {{
-                    fetch('{URL_STATUS}', {{
-                        method: 'PATCH',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ comando: 'fim', url_video: '', musica: '', cantor: '' }})
-                    }}).then(function() {{
-                        window.top.location.reload();
-                    }});
-                }}
-
-                vid.onended = function() {{
-                    proximaMusicaForçada();
-                }};
-            </script>
-        </body>
-        </html>
-        """
-        components.html(player_html, height=800, scrolling=False)
-
-        while True:
-            time.sleep(3)
-            try:
-                check_status = requests.get(f"{URL_STATUS}?nocache={time.time()}", timeout=5).json() or {}
-                if check_status.get("comando") != "play":
-                    st.rerun()
-            except:
-                pass
-    else:
-        st.error("⚠️ Comando 'play' recebido, mas o link do vídeo está vazio.")
-        time.sleep(3)
-        requests.patch(URL_STATUS, json={"comando": "fim"})
-        st.rerun()
-
-# 2. CONTAGEM DECRESCENTE (3, 2, 1, 0) ANTES DE ABRIR O KARAOKE
-elif comando == "aguardando_play":
+# 1. CONTAGEM DECRESCENTE (3, 2, 1, 0) ANTES DE EXECUTAR O PEDIDO
+if comando == "aguardando_play":
     st.markdown(f"""
         <div style='text-align:center; padding:80px; color:white;'>
             <h1 style='font-size: 2.5rem; color: #00ff00;'>A CHAMAR AO PALCO:</h1>
@@ -234,10 +71,11 @@ elif comando == "aguardando_play":
         placeholder_contagem.markdown(f'<div class="contador-box">{i}</div>', unsafe_allow_html=True)
         time.sleep(1)
     
-    requests.patch(URL_STATUS, json={"comando": "play"})
+    # Após a contagem, limpa o comando para voltar ao estado normal da tela principal
+    requests.patch(URL_STATUS, json={"comando": "fim"})
     st.rerun()
 
-# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE DE FUNDO NO CANTO
+# 2. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO DENTRO DO RETÂNGULO À DIREITA
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -262,10 +100,13 @@ else:
         url_clipe = res_status.get("url_video")
         nome_clipe_atual = res_status.get("musica")
 
-        if url_clipe and nome_clipe_atual and res_status.get("cantor") == "VÍDEO CLIPE":
-            st.markdown(f"<p style='color: #00ff00; font-weight: bold; margin-bottom: 5px;'>▶️ Reproduzindo: {nome_clipe_atual}</p>", unsafe_allow_html=True)
+        if url_clipe:
+            if nome_clipe_atual:
+                st.markdown(f"<p style='color: #00ff00; font-weight: bold; margin-bottom: 5px;'>▶️ Reproduzindo: {nome_clipe_atual}</p>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<p style='color: #00ff00; font-weight: bold; margin-bottom: 5px;'>▶️ Reproduzindo vídeo</p>", unsafe_allow_html=True)
             
-            # HTML encapsulado estritamente dentro das dimensões do retângulo do vídeo clipe (430x306) com os controlos reduzidos integrados
+            # HTML encapsulado estritamente dentro das dimensões do retângulo do vídeo clipe (430x306)
             mini_player_html = f"""
             <!DOCTYPE html>
             <html>
