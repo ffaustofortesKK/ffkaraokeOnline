@@ -28,6 +28,11 @@ st.markdown("""
             justify-content: center;
             align-items: center;
         }
+        .video-clipe-box video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; 
+        }
         .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
@@ -48,10 +53,9 @@ except:
 
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
-cantor_atual = str(res_status.get("cantor", ""))
 
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA (APENAS SE FOR MÚSICA DA FILA E NÃO VÍDEO CLIPE)
-if comando == "play" and cantor_atual != "VÍDEO CLIPE":
+# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE EM TELA CHEIA QUANDO ESTÁ EM MODO PLAY REAL
+if comando == "play":
     if url_video:
         player_html = f"""
         <!DOCTYPE html>
@@ -203,7 +207,7 @@ if comando == "play" and cantor_atual != "VÍDEO CLIPE":
             time.sleep(3)
             try:
                 check_status = requests.get(f"{URL_STATUS}?nocache={time.time()}", timeout=5).json() or {}
-                if check_status.get("comando") != "play" or str(check_status.get("cantor")) == "VÍDEO CLIPE":
+                if check_status.get("comando") != "play":
                     st.rerun()
             except:
                 pass
@@ -213,7 +217,7 @@ if comando == "play" and cantor_atual != "VÍDEO CLIPE":
         requests.patch(URL_STATUS, json={"comando": "fim"})
         st.rerun()
 
-# 2. CONTAGEM DECRESCENTE ANTES DE ABRIR O KARAOKE EM TELA CHEIA
+# 2. CONTAGEM DECRESCENTE (3, 2, 1, 0) ANTES DE ABRIR O KARAOKE
 elif comando == "aguardando_play":
     st.markdown(f"""
         <div style='text-align:center; padding:80px; color:white;'>
@@ -233,7 +237,7 @@ elif comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 3. TELA PRINCIPAL (FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE RESTRITO À CAIXINHA DA DIREITA)
+# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE DE FUNDO NO CANTO
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -258,10 +262,10 @@ else:
         url_clipe = res_status.get("url_video")
         nome_clipe_atual = res_status.get("musica")
 
-        # Exibe o mini player na caixinha da direita se houver clipe selecionado
-        if url_clipe and nome_clipe_atual and cantor_atual == "VÍDEO CLIPE":
+        if url_clipe and nome_clipe_atual and res_status.get("cantor") == "VÍDEO CLIPE":
             st.markdown(f"<p style='color: #00ff00; font-weight: bold; margin-bottom: 5px;'>▶️ Reproduzindo: {nome_clipe_atual}</p>", unsafe_allow_html=True)
             
+            # HTML encapsulado com object-fit: contain (mantém proporção correta dentro da moldura)
             mini_player_html = f"""
             <!DOCTYPE html>
             <html>
