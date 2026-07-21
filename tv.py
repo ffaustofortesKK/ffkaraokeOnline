@@ -3,7 +3,6 @@ import requests
 import time
 import cloudinary
 import cloudinary.api
-import cloudinary.search
 import random
 import json
 
@@ -79,45 +78,31 @@ url_video = res_status.get("url_video")
 
 def obter_todos_videos_da_pasta():
     urls = []
-    # 1. Tentar busca direcionada por prefixo (Mais fiável para pastas no Cloudinary)
     try:
-        result_prefix = cloudinary.api.resources(
+        # Método direto por prefixo (o mais robusto para pastas no Cloudinary)
+        result = cloudinary.api.resources(
             type="upload", 
             resource_type="video", 
             prefix="video_clipes/", 
-            max_results=50
+            max_results=100
         )
-        if result_prefix.get('resources'):
-            urls = [item['secure_url'] for item in result_prefix['resources']]
+        resources = result.get('resources', [])
+        if resources:
+            urls = [item['secure_url'] for item in resources]
     except Exception as e:
-        print("Erro na busca por prefixo:", e)
-
-    # 2. Se não encontrar por prefixo, tenta a busca avançada por expressão de pasta
-    if not urls:
-        try:
-            search_result = cloudinary.search.Search()\
-                .expression('folder=video_clipes AND resource_type:video')\
-                .max_results(50)\
-                .execute()
-            
-            lista = search_result.get('resources', [])
-            if lista:
-                urls = [item['secure_url'] for item in lista]
-        except Exception as e:
-            print("Erro na busca avançada Cloudinary:", e)
+        print("Erro ao buscar com prefixo 'video_clipes/':", e)
     
-    # 3. Fallback final caso os métodos anteriores retornem vazio
+    # Fallback caso a estrutura da pasta venha sem o prefixo exato na API
     if not urls:
         try:
-            fallback = cloudinary.api.resources(type="upload", resource_type="video", max_results=50)
+            fallback = cloudinary.api.resources(type="upload", resource_type="video", max_results=100)
             geral = fallback.get('resources', [])
-            if geral:
-                # Filtra apenas URLs que contenham video_clipes se possível, ou usa todos
-                urls = [item['secure_url'] for item in geral if 'video_clipes' in item.get('public_id', '')]
-                if not urls: # Se mesmo assim não filtrar, pega tudo
-                    urls = [item['secure_url'] for item in geral]
+            for item in geral:
+                # Filtra manualmente caso contenha video_clipes no public_id
+                if "video_clipes" in item.get('public_id', ''):
+                    urls.append(item['secure_url'])
         except Exception as e:
-            print("Erro no fallback Cloudinary:", e)
+            print("Erro no fallback geral Cloudinary:", e)
             
     return urls
 
