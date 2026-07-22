@@ -81,7 +81,7 @@ if comando == "aguardando_play":
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 2. EXECUÇÃO DO VÍDEO DE KARAOKE (TELA CHEIA, SOM ATIVO E RETORNO AUTOMÁTICO À FILA)
+# 2. EXECUÇÃO DO VÍDEO DE KARAOKE (TELA CHEIA, SOM ATIVO E BLOQUEIO DE REPETIÇÃO)
 elif comando == "play":
     player_karaoke_html = f"""
     <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999;">
