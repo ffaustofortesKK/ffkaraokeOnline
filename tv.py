@@ -54,76 +54,90 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# 1. CONTAGEM DECRESCENTE (3, 2, 1, 0) OU MÚSICA DE KARAOKE EM ECRÃ INTEIRO
-if comando in ["aguardando_play", "play"]:
-    if comando == "aguardando_play":
-        st.markdown(f"""
-            <div style='text-align:center; padding:80px; color:white;'>
-                <h1 style='font-size: 2.5rem; color: #00ff00;'>A CHAMAR AO PALCO:</h1>
-                <h2 style='font-size: 3.5rem;' class="cantor-style">{str(res_status.get('cantor', '')).upper()}</h2>
-                <h3 style='font-size: 2rem; color: yellow;'>{str(res_status.get('musica', '')).upper()}</h3>
-                <hr style='width: 50%; margin: 20px auto; border-color: #444;'>
-                <p style='font-size: 1.5rem; color: #ccc;'>O palco vai abrir em:</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        placeholder_contagem = st.empty()
-        for i in [3, 2, 1, 0]:
-            placeholder_contagem.markdown(f'<div class="contador-box">{i}</div>', unsafe_allow_html=True)
-            time.sleep(1)
-        
-        # Altera o comando para 'play' para disparar o vídeo em ecrã total
-        requests.patch(URL_STATUS, json={"comando": "play"})
-        st.rerun()
+# 1. CONTAGEM DECRESCENTE (3, 2, 1, 0) ANTES DE EXECUTAR O PEDIDO DO KARAOKE
+if comando == "aguardando_play":
+    st.markdown(f"""
+        <div style='text-align:center; padding:80px; color:white;'>
+            <h1 style='font-size: 2.5rem; color: #00ff00;'>A CHAMAR AO PALCO:</h1>
+            <h2 style='font-size: 3.5rem;' class="cantor-style">{str(res_status.get('cantor', '')).upper()}</h2>
+            <h3 style='font-size: 2rem; color: yellow;'>{str(res_status.get('musica', '')).upper()}</h3>
+            <hr style='width: 50%; margin: 20px auto; border-color: #444;'>
+            <p style='font-size: 1.5rem; color: #ccc;'>O palco vai abrir em:</p>
+        </div>
+    """, unsafe_allow_html=True)
     
-    # Execução do vídeo de Karaoke a ocupar a TELA TODA (Full Screen)
-    if url_video:
-        karaoke_full_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body, html {{
-                    margin: 0; padding: 0; width: 100vw; height: 100vh; background: black; overflow: hidden;
-                }}
-                .full-container {{
-                    position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: black; display: flex; justify-content: center; align-items: center;
-                }}
-                video {{
-                    width: 100%; height: 100%; object-fit: contain;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="full-container">
-                <video id="full-video" autoplay controls playsinline>
-                    <source src="{url_video}" type="video/mp4">
-                </video>
-            </div>
-            <script>
-                const v = document.getElementById('full-video');
-                v.play().catch(e => console.log(e));
-                
-                // Quando o vídeo do karaoke terminar, limpa o estado e volta à tela principal
-                v.onended = function() {{
-                    fetch("{URL_STATUS}", {{
-                        method: 'PATCH',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ comando: "fim", url_video: "" }})
-                    }}).then(() => {{
-                        window.location.reload();
-                    }});
-                }};
-            </script>
-        </body>
-        </html>
-        """
-        components.html(karaoke_full_html, height=750, scrolling=False)
-    else:
-        time.sleep(2)
-        st.rerun()
+    placeholder_contagem = st.empty()
+    for i in [3, 2, 1, 0]:
+        placeholder_contagem.markdown(f'<div class="contador-box">{i}</div>', unsafe_allow_html=True)
+        time.sleep(1)
+    
+    # Atualiza o comando para modo de execução em ECRÃ TOTAL para o karaoke
+    requests.patch(URL_STATUS, json={"comando": "executando_karaoke"})
+    st.rerun()
 
-# 2. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE NO RETÂNGULO À DIREITA
+# 2. EXECUÇÃO DO VÍDEO DE KARAOKE EM ECRÃ TOTAL
+elif comando == "executando_karaoke" and url_video:
+    karaoke_full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body, html {{
+                margin: 0; padding: 0; width: 100vw; height: 100vh; background: black; overflow: hidden;
+            }}
+            .fullscreen-container {{
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; display: flex; justify-content: center; align-items: center; z-index: 99999;
+            }}
+            video {{
+                width: 100%; height: 100%; object-fit: contain;
+            }}
+            .back-btn {{
+                position: absolute; top: 20px; right: 20px; background: rgba(255, 215, 0, 0.8); border: none; color: black; font-weight: bold; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1rem; z-index: 100000;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="fullscreen-container">
+            <button class="back-btn" onclick="fecharKaraoke()">✖ Fechar / Fim</button>
+            <video id="karaoke-video" autoplay controls playsinline>
+                <source src="{url_video}" type="video/mp4">
+            </video>
+        </div>
+        <script>
+            const v = document.getElementById('karaoke-video');
+            v.play().catch(e => console.log(e));
+            
+            // Quando o vídeo terminar, recarrega a página para voltar à tela principal
+            v.onended = function() {{
+                fetch("{URL_STATUS}", {{
+                    method: 'PATCH',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ comando: "fim" }})
+                }}).then(() => {{
+                    window.location.reload();
+                }});
+            }};
+
+            function fecharKaraoke() {{
+                fetch("{URL_STATUS}", {{
+                    method: 'PATCH',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ comando: "fim" }})
+                }}).then(() => {{
+                    window.location.reload();
+                }});
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    components.html(karaoke_full_html, height=750, scrolling=False)
+    
+    # Verificação periódica caso o comando mude externamente
+    time.sleep(3)
+    st.rerun()
+
+# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE DENTRO DO RETÂNGULO À DIREITA
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
