@@ -54,55 +54,76 @@ except:
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
 
-# 1. CONTAGEM DECRESCENTE (3, 2, 1, 0) ANTES DE EXECUTAR O PEDIDO
-if comando == "aguardando_play":
-    st.markdown(f"""
-        <div style='text-align:center; padding:80px; color:white;'>
-            <h1 style='font-size: 2.5rem; color: #00ff00;'>A CHAMAR AO PALCO:</h1>
-            <h2 style='font-size: 3.5rem;' class="cantor-style">{str(res_status.get('cantor', '')).upper()}</h2>
-            <h3 style='font-size: 2rem; color: yellow;'>{str(res_status.get('musica', '')).upper()}</h3>
-            <hr style='width: 50%; margin: 20px auto; border-color: #444;'>
-            <p style='font-size: 1.5rem; color: #ccc;'>O palco vai abrir em:</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    placeholder_contagem = st.empty()
-    for i in [3, 2, 1, 0]:
-        placeholder_contagem.markdown(f'<div class="contador-box">{i}</div>', unsafe_allow_html=True)
-        time.sleep(1)
-    
-    # Altera o comando para 'play' para ativar o modo de tela cheia da música de karaoke
-    requests.patch(URL_STATUS, json={"comando": "play"})
-    st.rerun()
-
-# 2. MÚSICA DE KARAOKE A DECORRER: OCUPA A TELA TODA
-elif comando == "play":
-    cantor_atual = res_status.get("cantor", "")
-    musica_atual = res_status.get("musica", "")
-    
-    st.markdown(f"""
-        <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden;">
-            <div style="position: absolute; top: 15px; left: 25px; z-index: 100000; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 8px; border: 1px solid #ffd700;">
-                <span style="color: white; font-size: 1.2rem;">🎤 Cantor: <strong class="cantor-style">{str(cantor_atual).upper()}</strong></span> | 
-                <span style="color: yellow; font-size: 1.2rem;">Música: <strong class="musica-style">{str(musica_atual).upper()}</strong></span>
+# 1. CONTAGEM DECRESCENTE (3, 2, 1, 0) OU MÚSICA DE KARAOKE EM ECRÃ INTEIRO
+if comando in ["aguardando_play", "play"]:
+    if comando == "aguardando_play":
+        st.markdown(f"""
+            <div style='text-align:center; padding:80px; color:white;'>
+                <h1 style='font-size: 2.5rem; color: #00ff00;'>A CHAMAR AO PALCO:</h1>
+                <h2 style='font-size: 3.5rem;' class="cantor-style">{str(res_status.get('cantor', '')).upper()}</h2>
+                <h3 style='font-size: 2rem; color: yellow;'>{str(res_status.get('musica', '')).upper()}</h3>
+                <hr style='width: 50%; margin: 20px auto; border-color: #444;'>
+                <p style='font-size: 1.5rem; color: #ccc;'>O palco vai abrir em:</p>
             </div>
-            <video autoplay controls playsinline style="width: 100vw; height: 100vh; object-fit: contain; background: black;">
-                <source src="{url_video}" type="video/mp4">
-                Seu navegador não suporta vídeo.
-            </video>
-            <div style="position: absolute; bottom: 15px; right: 25px; z-index: 100000;">
-                <form action="" method="get">
-                    <button onclick="window.location.reload();" style="background: #ffd700; border: none; padding: 8px 16px; font-weight: bold; border-radius: 5px; cursor: pointer;">✖ Fechar / Parar</button>
-                </form>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+        
+        placeholder_contagem = st.empty()
+        for i in [3, 2, 1, 0]:
+            placeholder_contagem.markdown(f'<div class="contador-box">{i}</div>', unsafe_allow_html=True)
+            time.sleep(1)
+        
+        # Altera o comando para 'play' para disparar o vídeo em ecrã total
+        requests.patch(URL_STATUS, json={"comando": "play"})
+        st.rerun()
     
-    # Verifica periodicamente se o comando mudou para fechar a tela cheia
-    time.sleep(3)
-    st.rerun()
+    # Execução do vídeo de Karaoke a ocupar a TELA TODA (Full Screen)
+    if url_video:
+        karaoke_full_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body, html {{
+                    margin: 0; padding: 0; width: 100vw; height: 100vh; background: black; overflow: hidden;
+                }}
+                .full-container {{
+                    position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: black; display: flex; justify-content: center; align-items: center;
+                }}
+                video {{
+                    width: 100%; height: 100%; object-fit: contain;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="full-container">
+                <video id="full-video" autoplay controls playsinline>
+                    <source src="{url_video}" type="video/mp4">
+                </video>
+            </div>
+            <script>
+                const v = document.getElementById('full-video');
+                v.play().catch(e => console.log(e));
+                
+                // Quando o vídeo do karaoke terminar, limpa o estado e volta à tela principal
+                v.onended = function() {{
+                    fetch("{URL_STATUS}", {{
+                        method: 'PATCH',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ comando: "fim", url_video: "" }})
+                    }}).then(() => {{
+                        window.location.reload();
+                    }});
+                }};
+            </script>
+        </body>
+        </html>
+        """
+        components.html(karaoke_full_html, height=750, scrolling=False)
+    else:
+        time.sleep(2)
+        st.rerun()
 
-# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE NO RETÂNGULO À DIREITA
+# 2. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE NO RETÂNGULO À DIREITA
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -124,7 +145,6 @@ else:
     with cl2:
         st.markdown("<h1 style='color:gold; font-size: 1.8rem; margin-bottom: 5px;'>📺 VÍDEO CLIPE (FUNDO)</h1>", unsafe_allow_html=True)
         
-        # Só exibe o mini player se o comando atual for especificamente "clipe" (ou vazio se for de fundo)
         url_clipe = res_status.get("url_video") if comando == "clipe" else None
         nome_clipe_atual = res_status.get("musica") if comando == "clipe" else None
 
