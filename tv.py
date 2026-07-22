@@ -17,8 +17,8 @@ st.markdown("""
         .cantor-style { color: white; font-weight: bold; text-shadow: 2px 2px 4px #000; }
         .musica-style { color: yellow; font-weight: bold; text-shadow: 2px 2px 4px #000; }
         .video-clipe-box { 
-            width: 473px; 
-            height: 337px;
+            width: 516px; 
+            height: 367px;
             background: black; 
             padding: 0px; 
             border-radius: 4px; 
@@ -134,7 +134,7 @@ elif comando == "executando_karaoke" and url_video:
     time.sleep(3)
     st.rerun()
 
-# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE DENTRO DO RETÂNGULO AUMENTADO À DIREITA
+# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE AUMENTADO EM 20% À DIREITA
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -159,17 +159,16 @@ else:
         url_clipe = res_status.get("url_video") if comando == "clipe" else None
 
         if url_clipe:
-            # HTML encapsulado atualizado com dimensões 473x337px (+10%)
             mini_player_html = f"""
             <!DOCTYPE html>
             <html>
             <head>
                 <style>
                     body, html {{
-                        margin: 0; padding: 0; width: 473px; height: 337px; background: black; overflow: hidden;
+                        margin: 0; padding: 0; width: 516px; height: 367px; background: black; overflow: hidden;
                     }}
                     .mini-container {{
-                        position: relative; width: 473px; height: 337px; background: black; display: flex; justify-content: center; align-items: center;
+                        position: relative; width: 516px; height: 367px; background: black; display: flex; justify-content: center; align-items: center;
                     }}
                     video {{
                         width: 100%; height: 100%; object-fit: fill;
@@ -185,7 +184,7 @@ else:
                         border-radius: 6px;
                         display: flex;
                         align-items: center;
-                        gap: 8px;
+                        gap: 10px;
                         box-sizing: border-box;
                     }}
                     .mini-controls button {{
@@ -193,20 +192,20 @@ else:
                         border: none;
                         color: black;
                         font-weight: bold;
-                        padding: 4px 8px;
+                        padding: 5px 10px;
                         border-radius: 4px;
                         cursor: pointer;
-                        font-size: 0.8rem;
+                        font-size: 0.85rem;
                     }}
                     .mini-controls input[type=range] {{
                         cursor: pointer;
                         accent-color: #ffd700;
-                        height: 4px;
+                        height: 5px;
                     }}
                     .mini-time {{
                         color: white;
                         font-family: monospace;
-                        font-size: 0.75rem;
+                        font-size: 0.8rem;
                     }}
                 </style>
             </head>
@@ -253,7 +252,7 @@ else:
 
                     function mudarSeek(val) {{
                         if (v.duration) {{
-                            v.currentTime = (val * v.duration) / 100;
+                            v.currentTime = (val / 100) * v.duration;
                         }}
                     }}
 
@@ -265,7 +264,7 @@ else:
             </body>
             </html>
             """
-            components.html(mini_player_html, height=347, scrolling=False)
+            components.html(mini_player_html, height=377, scrolling=False)
         else:
             st.markdown("""
                 <div class="video-clipe-box" style="display: flex; align-items: center; justify-content: center; text-align: center; color: #888; padding: 20px;">
