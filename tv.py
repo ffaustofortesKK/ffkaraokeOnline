@@ -33,7 +33,7 @@ st.markdown("""
         .video-clipe-box video {
             width: 100%;
             height: 100%;
-            object-fit: fill; 
+            object-fit: contain; 
         }
         .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
     </style>
@@ -173,7 +173,7 @@ else:
                         position: relative; width: 1047px; height: 719px; margin-left: -150px; margin-top: 0px; background: black; display: flex; justify-content: center; align-items: center; border: 2px solid #ffd700; border-radius: 4px; box-sizing: border-box;
                     }}
                     video {{
-                        width: 100%; height: 100%; object-fit: fill;
+                        width: 100%; height: 100%; object-fit: contain;
                     }}
                     .mini-controls {{
                         position: absolute;
