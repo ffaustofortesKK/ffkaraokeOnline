@@ -28,7 +28,7 @@ st.markdown("""
             justify-content: center;
             align-items: center;
             margin-top: 0px;
-            margin-left: -50px;
+            margin-left: -150px;
         }
         .video-clipe-box video {
             width: 100%;
@@ -170,7 +170,7 @@ else:
                         margin: 0; padding: 0; width: 1047px; height: 719px; background: black; overflow: hidden;
                     }}
                     .mini-container {{
-                        position: relative; width: 1047px; height: 719px; margin-left: -50px; margin-top: 0px; background: black; display: flex; justify-content: center; align-items: center; border: 2px solid #ffd700; border-radius: 4px; box-sizing: border-box;
+                        position: relative; width: 1047px; height: 719px; margin-left: -150px; margin-top: 0px; background: black; display: flex; justify-content: center; align-items: center; border: 2px solid #ffd700; border-radius: 4px; box-sizing: border-box;
                     }}
                     video {{
                         width: 100%; height: 100%; object-fit: fill;
