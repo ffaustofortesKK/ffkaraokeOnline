@@ -33,6 +33,7 @@ st.markdown("""
             height: 100%;
             object-fit: fill; 
         }
+        .contador-box { font-size: 8rem; color: yellow; font-weight: bold; text-shadow: 0 0 20px red; text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -59,13 +60,35 @@ url_video = res_status.get("url_video")
 if comando == "clipe" and url_video:
     st.session_state.ultimo_clipe_valido = url_video
 
-# 1. EXIBIÇÃO DO VÍDEO DE KARAOKE A OCUPAR A TELA TODA (SEM CONTAGEM E COM SOM ATIVO)
-if comando in ["aguardando_play", "play", "executando_karaoke"]:
-    st.markdown(f"<h2 style='text-align: center; color: #00ffcc; margin-bottom: 10px;'>🎤 A cantar agora: {str(res_status.get('cantor', '')).upper()} - {str(res_status.get('musica', '')).upper()}</h2>", unsafe_allow_html=True)
+# 1. CONTAGEM DECRESCENTE (3, 2, 1, 0) E SALTO AUTOMÁTICO PARA O VÍDEO
+if comando == "aguardando_play":
+    st.markdown(f"""
+        <div style='text-align:center; padding:80px; color:white;'>
+            <h1 style='font-size: 2.5rem; color: #00ff00;'>A CHAMAR AO PALCO:</h1>
+            <h2 style='font-size: 3.5rem;' class="cantor-style">{str(res_status.get('cantor', '')).upper()}</h2>
+            <h3 style='font-size: 2rem; color: yellow;'>{str(res_status.get('musica', '')).upper()}</h3>
+            <hr style='width: 50%; margin: 20px auto; border-color: #444;'>
+            <p style='font-size: 1.5rem; color: #ccc;'>O palco vai abrir em:</p>
+        </div>
+    """, unsafe_allow_html=True)
     
+    placeholder_contagem = st.empty()
+    for i in [3, 2, 1, 0]:
+        placeholder_contagem.markdown(f'<div class="contador-box">{i}</div>', unsafe_allow_html=True)
+        time.sleep(1)
+    
+    # Avança automaticamente para o estado "play" sem precisar de cliques
+    requests.patch(URL_STATUS, json={"comando": "play"})
+    st.rerun()
+
+# 2. EXECUÇÃO DO VÍDEO DE KARAOKE (TELA CHEIA, SOM ATIVO E RETORNO AUTOMÁTICO À FILA)
+elif comando == "play":
     player_karaoke_html = f"""
-    <div style="display: flex; justify-content: center; align-items: center; background: black; width: 100%; height: 80vh;">
-        <video id="karaokeVideo" width="100%" height="100%" autoplay controls style="max-height: 80vh; border-radius: 10px; object-fit: contain;">
+    <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999;">
+        <div style="position: absolute; top: 15px; text-align: center; width: 100%;">
+            <h2 style="color: #00ffcc; font-family: sans-serif; margin: 0; text-shadow: 2px 2px 4px #000;">🎤 A cantar: {str(res_status.get('cantor', '')).upper()} - {str(res_status.get('musica', '')).upper()}</h2>
+        </div>
+        <video id="karaokeVideo" width="100%" height="90%" autoplay controls style="object-fit: contain;">
             <source src="{url_video}" type="video/mp4">
             O seu browser não suporta vídeo.
         </video>
@@ -73,15 +96,16 @@ if comando in ["aguardando_play", "play", "executando_karaoke"]:
     <script>
         var video = document.getElementById('karaokeVideo');
         
-        // Assegura o início imediato com som ativo
+        // Garante som ativo e reprodução imediata
         video.muted = false;
         video.play().catch(error => {{
-            console.log("Autoplay bloqueado pelo browser, a tentar com mudo:", error);
+            console.log("Erro no autoplay com som, a tentar reativar:", error);
             video.muted = true;
             video.play();
+            setTimeout(() => {{ video.muted = false; }}, 500);
         }});
 
-        // Assim que o vídeo de karaoke termina, limpa o estado e volta imediatamente para a tela principal (Fila + Clipe)
+        // Assim que o vídeo de karaoke termina, limpa o estado no Firebase e recarrega para a fila de espera
         video.onended = function() {{
             fetch('{URL_STATUS}', {{
                 method: 'PATCH',
@@ -98,9 +122,9 @@ if comando in ["aguardando_play", "play", "executando_karaoke"]:
         }};
     </script>
     """
-    components.html(player_karaoke_html, height=600)
+    components.html(player_karaoke_html, height=750)
 
-# 2. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE À DIREITA (COMO NA IMAGEM)
+# 3. TELA PRINCIPAL: FILA DE ESPERA À ESQUERDA E VÍDEO CLIPE À DIREITA
 else:
     cl1, cl2 = st.columns([1.4, 1.2])
 
@@ -115,7 +139,7 @@ else:
                     st.markdown(f"<h3 style='margin: 10px 0; font-size: 1.3rem;'>{contador_exibicao}. <span class='cantor-style'>{str(p.get('cantor')).upper()}</span> ➔ <span class='musica-style'>{str(p.get('musica')).upper()}</span></h3>", unsafe_allow_html=True)
                     contador_exibicao += 1
             if contador_exibicao == 1:
-                st.info("A fila está vazia. Envie músicas pelo telemóvel!")
+                st.info("Ainda sem cantores na fila.")
         else:
             st.info("A fila está vazia. Envie músicas pelo telemóvel!")
 
