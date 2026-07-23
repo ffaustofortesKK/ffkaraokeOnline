@@ -56,6 +56,13 @@ except:
 
 comando = res_status.get("comando")
 url_video = res_status.get("url_video")
+cantor_atual = res_status.get("cantor")
+musica_atual = res_status.get("musica")
+
+# SEGURANÇA: Se o Firebase estiver preso em "play" mas sem cantor/música válidos, força a limpeza imediata
+if comando == "play" and (not cantor_atual or not musica_atual):
+    requests.patch(URL_STATUS, json={"comando": "clipe", "cantor": "", "musica": ""})
+    comando = "clipe"
 
 if comando == "clipe" and url_video:
     st.session_state.ultimo_clipe_valido = url_video
@@ -65,8 +72,8 @@ if comando == "aguardando_play":
     st.markdown(f"""
         <div style='text-align:center; padding:80px; color:white;'>
             <h1 style='font-size: 2.5rem; color: #00ff00;'>A CHAMAR AO PALCO:</h1>
-            <h2 style='font-size: 3.5rem;' class="cantor-style">{str(res_status.get('cantor', '')).upper()}</h2>
-            <h3 style='font-size: 2rem; color: yellow;'>{str(res_status.get('musica', '')).upper()}</h3>
+            <h2 style='font-size: 3.5rem;' class="cantor-style">{str(cantor_atual).upper()}</h2>
+            <h3 style='font-size: 2rem; color: yellow;'>{str(musica_atual).upper()}</h3>
             <hr style='width: 50%; margin: 20px auto; border-color: #444;'>
             <p style='font-size: 1.5rem; color: #ccc;'>O palco vai abrir em:</p>
         </div>
@@ -77,7 +84,6 @@ if comando == "aguardando_play":
         placeholder_contagem.markdown(f'<div class="contador-box">{i}</div>', unsafe_allow_html=True)
         time.sleep(1)
     
-    # Avança automaticamente para o estado "play"
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
@@ -86,7 +92,7 @@ elif comando == "play":
     player_karaoke_html = f"""
     <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999;">
         <div style="position: absolute; top: 15px; text-align: center; width: 100%;">
-            <h2 style="color: #00ffcc; font-family: sans-serif; margin: 0; text-shadow: 2px 2px 4px #000;">🎤 A cantar: {str(res_status.get('cantor', '')).upper()} - {str(res_status.get('musica', '')).upper()}</h2>
+            <h2 style="color: #00ffcc; font-family: sans-serif; margin: 0; text-shadow: 2px 2px 4px #000;">🎤 A cantar: {str(cantor_atual).upper()} - {str(musica_atual).upper()}</h2>
         </div>
         <video id="karaokeVideo" width="100%" height="90%" autoplay controls style="object-fit: contain;">
             <source src="{url_video}" type="video/mp4">
@@ -104,7 +110,6 @@ elif comando == "play":
             setTimeout(() => {{ video.muted = false; }}, 500);
         }});
 
-        // Assim que o vídeo de karaoke termina, limpa o comando no Firebase e força o recarregamento para a tela principal
         video.onended = function() {{
             video.pause();
             fetch('{URL_STATUS}', {{
