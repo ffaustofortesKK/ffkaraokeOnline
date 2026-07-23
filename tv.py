@@ -77,11 +77,11 @@ if comando == "aguardando_play":
         placeholder_contagem.markdown(f'<div class="contador-box">{i}</div>', unsafe_allow_html=True)
         time.sleep(1)
     
-    # Avança automaticamente para o estado "play" sem precisar de cliques
+    # Avança automaticamente para o estado "play"
     requests.patch(URL_STATUS, json={"comando": "play"})
     st.rerun()
 
-# 2. EXECUÇÃO DO VÍDEO DE KARAOKE (TELA CHEIA, SOM ATIVO E RETORNO LIMPO À TELA PRINCIPAL)
+# 2. EXECUÇÃO DO VÍDEO DE KARAOKE (TELA CHEIA, SOM ATIVO E SAÍDA AUTOMÁTICA AO TERMINAR)
 elif comando == "play":
     player_karaoke_html = f"""
     <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 99999;">
@@ -96,7 +96,6 @@ elif comando == "play":
     <script>
         var video = document.getElementById('karaokeVideo');
         
-        // Garante som ativo e reprodução imediata
         video.muted = false;
         video.play().catch(error => {{
             console.log("Erro no autoplay com som, a tentar reativar:", error);
@@ -105,7 +104,7 @@ elif comando == "play":
             setTimeout(() => {{ video.muted = false; }}, 500);
         }});
 
-        // Assim que o vídeo termina, limpa o comando no Firebase (volta a 'clipe' ou vazio) e recarrega para a tela principal
+        // Assim que o vídeo de karaoke termina, limpa o comando no Firebase e força o recarregamento para a tela principal
         video.onended = function() {{
             video.pause();
             fetch('{URL_STATUS}', {{
@@ -118,6 +117,8 @@ elif comando == "play":
                     "musica": ""
                 }})
             }}).then(() => {{
+                window.location.reload();
+            }}).catch(() => {{
                 window.location.reload();
             }});
         }};
